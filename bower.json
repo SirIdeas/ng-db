@@ -1,0 +1,33 @@
+{
+  "name": "ng-db",
+  "homepage": "https://github.com/SirIdeas/ng-db",
+  "authors": [
+    "Alex J. Rondon <arondon@sirideas.com>"
+  ],
+  "description": "",
+  "main": "ng-db.js",
+  "keywords": [
+    "offline",
+    "html5",
+    "indexeddb",
+    "js",
+    "sync"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/SirIdeas/ng-db.git"
+  },
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "bower_components",
+    "demo",
+    "src",
+    "node_modules",
+    ".bowerrc",
+    ".gitignore",
+    "gulpfile.js"
+  ],
+  "dependencies": {
+  }
+}
