@@ -21,7 +21,7 @@
   "ignore": [
     "**/.*",
     "bower_components",
-    "demo",
+    "gh-pahes",
     "src",
     "node_modules",
     ".bowerrc",

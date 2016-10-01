@@ -4,6 +4,7 @@ var path = require('path');
 
 var gulp = require('gulp');
 var gutil = require('gulp-util');
+var gcopy = require('gulp-copy');
 var guglify = require('gulp-uglifyjs');
 var webpack = require('gulp-webpack');
 
@@ -12,7 +13,7 @@ var bower = require('./bower.json');
 
 function errorHandler(title) {
   return function(err) {
-    gutil.log(gutil.colors.red('[' + title + ']'), err.toString());
+    gcopy.log(gutil.colors.red('[' + title + ']'), err.toString());
     this.emit('end');
   };
 }

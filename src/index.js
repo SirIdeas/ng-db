@@ -1,6 +1,7 @@
 'use strict';
 
-angular.module('ngDb', [
-])
+import iDb from './services/idb';
 
-.constant('NG_DB_VERSION', '0.0.1')
+angular.module('ngDb', [])
+  .constant('NG_DB_VERSION', '0.0.1')
+  .service('iDbService', iDb);
