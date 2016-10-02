@@ -1,24 +1,22 @@
 'use strict';
 
-var path = require('path');
-
 var gulp = require('gulp');
 var gutil = require('gulp-util');
-var gcopy = require('gulp-copy');
 var guglify = require('gulp-uglifyjs');
-var webpack = require('gulp-webpack');
+var gwebpack = require('gulp-webpack');
 
 var pkg = require('./package.json');
 var bower = require('./bower.json');
 
 function errorHandler(title) {
   return function(err) {
-    gcopy.log(gutil.colors.red('[' + title + ']'), err.toString());
+    gutil.log(gutil.colors.red('[' + title + ']'), err.toString());
     this.emit('end');
   };
 }
 
 function webpackWrapper(callback) {
+
   var webpackOptions = {
     watch: !!callback,
     devtool: 'inline-source-map',
@@ -30,6 +28,7 @@ function webpackWrapper(callback) {
   };
 
   var webpackChangeHandler = function(err, stats) {
+
     if(err) {
       errorHandler('Webpack')(err);
     }
@@ -46,11 +45,8 @@ function webpackWrapper(callback) {
   };
 
   return gulp.src([ pkg.main ])
-    .pipe(webpack(webpackOptions, null, webpackChangeHandler))
-    .pipe(gulp.dest(''))
-    .pipe(guglify(bower.name.concat('.min.js')))
-    .pipe(gulp.dest(''))
-    .pipe(gulp.dest('gh-pages/js'));
+    .pipe(gwebpack(webpackOptions, null, webpackChangeHandler))
+    .pipe(gulp.dest(''));
     
 }
 
@@ -58,8 +54,20 @@ gulp.task('build', function () {
   return webpackWrapper();
 });
 
+gulp.task('minify', function () {
+
+  return gulp.src([ bower.name.concat('.js') ])
+    .pipe(guglify(bower.name.concat('.min.js')))
+    .pipe(gulp.dest(''))
+    .pipe(gulp.dest('gh-pages/js'));
+
+});
+
 gulp.task('watch', function (callback) {
-  return webpackWrapper(callback);
+
+  webpackWrapper(callback)
+  return gulp.watch([bower.name.concat('.js')], ['minify']);
+
 });
 
 gulp.task('default', ['build']);
