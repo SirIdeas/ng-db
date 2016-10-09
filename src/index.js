@@ -1,15 +1,16 @@
 'use strict';
 
-import * as $ngDbUtils from './utils/validations';
-import $ngDbEvents from './utils/events';
+import ngDbUtils from './utils/ngDbUtils';
+import ngDbEvents from './utils/events';
+import qs from './utils/qs';
 
-import iDbServiceFactory from './services/iDb';
-import iModelServiceFactory from './services/iModel';
+import iDb from './services/iDb';
+import iModel from './services/iModel';
 
 angular.module('ngDb', [])
   .constant('NG_DB_VERSION', '0.0.1')
-  .service('$ngDbUtils', function () { return $ngDbUtils; })
-  .service('$ngDbEvents', function () { return $ngDbEvents; })
-
-  .service('$iDb', iDbServiceFactory(angular))
-  .service('$iModel', iModelServiceFactory(angular));
+  .service('$ngDbEvents', function () { return ngDbEvents; })
+  .service('$ngDbUtils', ngDbUtils)
+  .service('$qs', qs)
+  .service('$iDb', iDb)
+  .service('$iModel', iModel);
