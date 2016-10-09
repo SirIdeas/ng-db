@@ -14,22 +14,9 @@ export default function iModelService ($qs, $ngDbUtils) { 'ngInject';
       this.$constructor.apply(this, arguments);
     };
 
-    // Asigna los atributos
-    $Model.prototype.$setAttributes = function (data) { let thiz = this;
-      $ngDbUtils.validate(arguments, ['object']);
-      
-      Object.keys(data).map(function (property) {
-        thiz[property] = data[property];
-      });
-
-    };
-
-    // Consturctor que se puede sobre escribir
-    $Model.prototype.$constructor = function (data) {
-    };
-
     // Asigna el ID al modelo
     $Model.$id = function ($pIid) {
+      $ngDbUtils.validate(arguments, ['object']);
       $id = $pIid
       return $Model;
     };
@@ -48,12 +35,14 @@ export default function iModelService ($qs, $ngDbUtils) { 'ngInject';
 
     // Método que permite modificar model.
     $Model.$build = function (buildCallback) {
+      $ngDbUtils.validate(arguments, ['function']);
       buildCallback($Model);
       return $Model;
     };
 
     // Crea nuevas instancias de los modelos
     $Model.$create = function (data, cb) {
+      $ngDbUtils.validate(arguments, ['object', ['function', 'undefined']]);
 
       // Si es un array
       if (data.length === undefined) {
@@ -85,9 +74,91 @@ export default function iModelService ($qs, $ngDbUtils) { 'ngInject';
 
     };
 
+    // Buscar un campo
+    $Model.searchDeepField = function (obj, field, cb) {
+      $ngDbUtils.validate(arguments, ['object', 'string', ['function', 'undefined']]);
+
+      let fields = field.split('.');
+      let lastField = fields.pop();
+
+      return (function _set(obj) {
+        if (fields.length == 0)
+          return cb(obj, lastField);
+        let field = fields.shift();
+        if (typeof obj[field] === 'undefined')
+          obj[field] = {};
+        return _set(obj[field]);
+      })(obj);
+
+    };
+
+    // Devuelve la instancia del model de las guardadas. Si no existe entonce
+    // se crea
+    $Model.$get = function (obj) {
+      $ngDbUtils.validate(arguments, ['object']);
+
+      // Obtener el key del objeto
+      let key = $Model.searchDeepField(obj, $id.keyPath, function (obj, lastField) {
+        return obj[lastField];
+      });
+
+      // No existe la instancia entonce se crea
+      if (!$instances[key])
+        $instances[key] = new $Model(obj);
+      
+      return $instances[key];
+    };
+
+    // Buscar en el modelo
+    $Model.$find = function (scope, cb) {
+      let args = Array.prototype.slice.call(arguments);
+      cb = args.pop(); scope = args.pop();
+      return $db.$find($Model, $modelName, scope, cb);
+    };
+
+    // Asigna los atributos
+    $Model.prototype.$setAttributes = function (data) { let thiz = this;
+      $ngDbUtils.validate(arguments, ['object']);
+      
+      Object.keys(data).map(function (property) {
+        thiz.$set(property, data[property]);
+      });
+
+    };
+
+    // Devuelve el valor de una propiedad
+    $Model.prototype.$get = function (field) { let thiz = this;
+      return $Model.searchDeepField(thiz, field, function (obj, lastField) {
+        return obj[lastField];
+      });
+    };
+
+    // Asigna in valor a un campo
+    $Model.prototype.$set = function (field, value) { let thiz = this;
+      return $Model.searchDeepField(thiz, field, function (obj, lastField) {
+        obj[lastField] = value;
+        return thiz;
+      });
+    };
+
+    // Consturctor que se puede sobre escribir
+    $Model.prototype.$constructor = function (data) {
+    };
+
     // Guarda los datos del objeto
-    $Model.prototype.$create = function (cb){
-      return $db.$create($modelName, this, cb);
+    $Model.prototype.$create = function (cb){ let thiz = this;
+      return $db.$create($modelName, this, function (err, event) {
+        if (err) { if (cb) cb(err); return; };
+
+        // Asignar el generado al modelo
+        thiz.$set($id.keyPath, event.target.result)
+
+        // Guardar la instancia en la colecion de instancias
+        $instances[thiz.$get($id.keyPath)] = thiz;
+
+        if (cb) cb.apply(null, [null].concat(Array.prototype.slice.call(arguments)));
+
+      });
     };
 
     return $Model;

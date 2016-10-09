@@ -2,7 +2,7 @@
 
 export default function qs () { 'ngInject'
   
-  function qsClass () { let thiz = this;
+  function qsClass (cb) { let thiz = this;
     
     let thens = [];
     let thensReady = [];
@@ -18,6 +18,7 @@ export default function qs () { 'ngInject'
       if (!thens.length) return;
       var cb = thens.shift();
       cb.apply(null, thiz.resultArgs);
+      thensReady.push(cb);
       thensResolved();
     }
 
@@ -25,6 +26,7 @@ export default function qs () { 'ngInject'
       if (!catchs.length) return;
       var cb = catchs.shift();
       cb.apply(null, thiz.error);
+      catchsReady.push(cb);
       catchsResolved();
     }
 
@@ -79,6 +81,8 @@ export default function qs () { 'ngInject'
       return thiz;
 
     };
+
+    if(cb) thiz.promise.done(cb);
 
   };
 

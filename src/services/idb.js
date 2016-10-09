@@ -141,8 +141,7 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
       $ngDbUtils.validate(arguments, ['string', ['object', 'undefined']]);
 
       $upgradeNeededDefered.promise.then(function (event, request) {
-        let db = request.result;
-        db.createObjectStore(modelName, modelId);
+        request.result.createObjectStore(modelName, modelId);
       });
 
     };
@@ -151,8 +150,7 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
     thiz.$createIndex = function (modelName, indexName, fieldName, opts) {
       $ngDbUtils.validate(arguments, ['string', 'string', 'string', ['object', 'undefined']]);
 
-      $upgradeNeededDefered.promise.then(function (event) {
-        let db = request.result;
+      $upgradeNeededDefered.promise.then(function (event, request) {
         let store = request.transaction.objectStore(modelName);
         store.createIndex(indexName, fieldName, opts);
       });
@@ -173,7 +171,7 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
 
         // Transaccion completada satisfatoriamente
         tx.oncomplete = function (event) {
-          defered.resolve([event, result]);
+          defered.resolve(event, result);
         };
 
         // Se generó un error en la transacción
@@ -194,20 +192,46 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
       let defered = $qs.defer(cb);
 
       // Se crea una transaccion
-      thiz.$transaction(modelName, "readwrite", function (tx) {
-
+      thiz.$transaction(modelName, 'readonly', function (tx) {
         let request = tx.objectStore(modelName).put(instance);
 
         // Transaccion completada satisfatoriamente
         request.onsuccess  = function (event) {
-          console.log('onsuccess', event.target.result);
-          defered.resolve([event, instance]);
+          defered.resolve(event, instance);
         };
 
         // Se generó un error en la transacción
         request.onerror  = function () {
           // Could call request.preventDefault() to prevent the transaction from aborting.
           defered.reject(request);
+        };
+
+      });
+
+    };
+
+    // Buscar en el modelo
+    thiz.$find = function (Model, modelName, scope, cb) {
+      $ngDbUtils.validate(arguments, ['function', 'string', ['object', 'undefined'], 'function']);
+
+      let defered = $qs.defer(cb);
+      let result = [];
+
+      // Se crea una transaccion
+      thiz.$transaction(modelName, 'readonly', function (tx) {
+        let store = tx.objectStore(modelName);
+        let request = store.openCursor();
+
+        request.onsuccess = function() {
+          var cursor = request.result;
+          if (cursor) {
+            // Called for each matching record.
+            result.push(Model.$get(cursor.value));
+            cursor.continue();
+          } else {
+            // No more matching records.
+            console.log(result)
+          }
         };
 
       });
