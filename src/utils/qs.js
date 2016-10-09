@@ -16,7 +16,7 @@ export default function qs () { 'ngInject'
 
     function thensResolved () {
       if (!thens.length) return;
-      var cb = thens.shift();
+      let cb = thens.shift();
       cb.apply(null, thiz.resultArgs);
       thensReady.push(cb);
       thensResolved();
@@ -24,7 +24,7 @@ export default function qs () { 'ngInject'
 
     function catchsResolved () {
       if (!catchs.length) return;
-      var cb = catchs.shift();
+      let cb = catchs.shift();
       cb.apply(null, thiz.error);
       catchsReady.push(cb);
       catchsResolved();
@@ -46,7 +46,7 @@ export default function qs () { 'ngInject'
 
     thiz.promise.then = function (cb) {
       thens.push(cb);
-      if (thiz.resolved && !thiz.error) {
+      if (thiz.$resolved && !thiz.error) {
         thensResolved();
       }
       return thiz;
@@ -54,7 +54,7 @@ export default function qs () { 'ngInject'
 
     thiz.promise.catch = function (cb) {
       catchs.push(cb);
-      if (thiz.resolved && thiz.error) {
+      if (thiz.$resolved && thiz.error) {
         catchsResolved();
       }
       return thiz;
@@ -70,7 +70,7 @@ export default function qs () { 'ngInject'
         cb.apply(null, thiz.error);
       });
 
-      if (thiz.resolved) {
+      if (thiz.$resolved) {
         if (!thiz.error) {
           thensResolved();
         }else {

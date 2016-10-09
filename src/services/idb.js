@@ -84,34 +84,38 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
       $opened = true;
 
       // dejamos abierta nuestra base de datos
-      const request = indexedDB.open($dbName, $dbVersion);
+      indexedDB.deleteDatabase($dbName).onsuccess = function () {
 
-      request.onupgradeneeded = function (event) {
-        // Do something with request.result!
-        $upgradeNeededDefered.resolve(event, request);
+        const request = indexedDB.open($dbName, $dbVersion);
 
-      };
+        request.onupgradeneeded = function (event) {
+          // Do something with request.result!
+          $upgradeNeededDefered.resolve(event, request);
 
-      // Asignar el manejador del resultado
-      request.onsuccess = function (event) {
-        // Do something with request.result!
-        $request = request;
+        };
 
-        // Asingar el manejador de errores a la BD
-        $request.onerror = function (event) {
-          $log.error('Database error: '+ event.target.errorCode);
-          thiz.$trigger($ngDbEvents.DB_ERROR, [event]);
+        // Asignar el manejador del resultado
+        request.onsuccess = function (event) {
+          // Do something with request.result!
+          $request = request;
+
+          // Asingar el manejador de errores a la BD
+          $request.onerror = function (event) {
+            $log.error('Database error: '+ event.target.errorCode);
+            thiz.$trigger($ngDbEvents.DB_ERROR, [event]);
+          }
+
+          $openDefered.resolve(event, request);
+
+        };
+
+        // Asignar el manejador de errores
+          // Do something with request.errorCode!
+        request.onerror = function (event) {
+          $openDefered.reject(request.errorCode);
         }
 
-        $openDefered.resolve(event, request);
-
       };
-
-      // Asignar el manejador de errores
-        // Do something with request.errorCode!
-      request.onerror = function (event) {
-        $openDefered.reject(request.errorCode);
-      }
 
       return $openDefered;
 
@@ -165,7 +169,6 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
 
       // Cuando se abra la BD
       $openDefered.promise.then(function (event, request) {
-
         let tx = request.result.transaction(modelName, perms);
         let result = action(tx);
 
@@ -192,7 +195,7 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
       let defered = $qs.defer(cb);
 
       // Se crea una transaccion
-      thiz.$transaction(modelName, 'readonly', function (tx) {
+      thiz.$transaction(modelName, 'readwrite', function (tx) {
         let request = tx.objectStore(modelName).put(instance);
 
         // Transaccion completada satisfatoriamente
@@ -223,15 +226,15 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
         let request = store.openCursor();
 
         request.onsuccess = function() {
-          var cursor = request.result;
-          if (cursor) {
-            // Called for each matching record.
-            result.push(Model.$get(cursor.value));
-            cursor.continue();
-          } else {
-            // No more matching records.
-            console.log(result)
-          }
+          let cursor = request.result;
+
+          // No more matching records.
+          if (!cursor) return defered.resolve(result);
+          
+          // Called for each matching record.
+          result.push(Model.$get(cursor.value));
+          cursor.continue();
+
         };
 
       });

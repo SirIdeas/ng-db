@@ -10,8 +10,9 @@ export default function iModelService ($qs, $ngDbUtils) { 'ngInject';
     let $instances = {};
 
     // Constuctor del modelo
-    function $Model() {
-      this.$constructor.apply(this, arguments);
+    function $Model(data) {
+      this.$setAttributes(data);
+      this.$constructor(data);
     };
 
     // Asigna el ID al modelo
@@ -46,8 +47,8 @@ export default function iModelService ($qs, $ngDbUtils) { 'ngInject';
 
       // Si es un array
       if (data.length === undefined) {
-        let $record = new $Model(data);
-        return $record.$create(cb);
+        let record = $Model.$get(data);
+        return record.$create(cb);
       }
         
       // Obtener una copia del array
@@ -101,6 +102,10 @@ export default function iModelService ($qs, $ngDbUtils) { 'ngInject';
       let key = $Model.searchDeepField(obj, $id.keyPath, function (obj, lastField) {
         return obj[lastField];
       });
+
+      // El objeto no tiene ID
+      if (!key) 
+        return new $Model(obj);
 
       // No existe la instancia entonce se crea
       if (!$instances[key])
