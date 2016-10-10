@@ -4,6 +4,7 @@
 export default function iModelService ($qs, $ngDbUtils) { 'ngInject';
 
   return function $iModel($db, $modelName) { let thiz = this;
+    $ngDbUtils.validate(arguments, [null ,'string']);
 
     // Clave del modelo
     let $id = { keyPath: 'id', autoIncrement: true };
