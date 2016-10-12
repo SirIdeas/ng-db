@@ -1,11 +1,11 @@
 {
-  "name": "ng-db",
-  "homepage": "https://github.com/SirIdeas/ng-db",
+  "name": "ng-idb",
+  "homepage": "https://github.com/SirIdeas/ng-idb",
   "authors": [
     "Alex J. Rondon <arondon@sirideas.com>"
   ],
   "description": "",
-  "main": "ng-db.js",
+  "main": "ng-idb.js",
   "keywords": [
     "offline",
     "html5",
@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/SirIdeas/ng-db.git"
+    "url": "git://github.com/SirIdeas/ng-idb.git"
   },
   "license": "MIT",
   "ignore": [

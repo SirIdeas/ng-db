@@ -1,6 +1,12 @@
 'use strict';
 
-export default function ngDbUtils ($q) { 'ngInject'
+export default function idbUtils ($q) { 'ngInject'
+  
+  // Dvuelve el host de una URL
+  function getHost(url) {
+    let m = url.match(/^(?:https?:)?\/\/([^\/]+)/);
+    return m ? m[1] : null;
+  }
 
   // Funcion para determinar si es un callback válido o no
   function isCallback (cb, throwError) {
@@ -65,6 +71,7 @@ export default function ngDbUtils ($q) { 'ngInject'
   }
 
   return {
+    getHost: getHost,
     isCallback: isCallback,
     mustBeCallback: mustBeCallback,
     mustBe: mustBe,

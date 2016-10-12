@@ -1,7 +1,7 @@
 'use strict';
 
 // Funcion para el servicio de la BD
-export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log) { 'ngInject';
+export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInject';
 
   // En la siguiente linea, puede incluir prefijos de implementacion que quiera probar.
   const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -17,123 +17,123 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
   }
 
   // Clase para la creación de instancias de la BD
-  return function $iDb($dbName, $dbVersion) { const thiz = this;
-    $ngDbUtils.validate(arguments, ['string', 'number']);
+  return function idb(dbName, dbVersion) { const thiz = this;
+    idbUtils.validate(arguments, ['string', 'number']);
 
     // Manejadores de eventos.
-    let $eventsCallbacks = {};
-    let $upgradeNeededDefered = $qs.defer();
-    let $openDefered = $qs.defer();
-    let $opened = false;
+    let eventsCallbacks = {};
+    let upgradeNeededDefered = qs.defer();
+    let openDefered = qs.defer();
+    let opened = false;
 
     // Instancia de la base de datos;
-    let $request = null;
-    thiz.$models = {};
+    let request = null;
+    thiz.models = {};
     
     // Agregar un manejador de evento
-    thiz.$bind = function (eventName, cb) {
-      $ngDbUtils.validate(arguments, ['string', 'function']);
+    thiz.bind = function (eventName, cb) {
+      idbUtils.validate(arguments, ['string', 'function']);
 
-      if (!$eventsCallbacks[eventName]){
-        $eventsCallbacks[eventName] = [];
+      if (!eventsCallbacks[eventName]){
+        eventsCallbacks[eventName] = [];
       }
 
-      $eventsCallbacks[eventName].push(cb);
+      eventsCallbacks[eventName].push(cb);
 
     };
 
     //Remueve un manejador de evento
-    thiz.$unbind = function (eventName, cb) {
-      $ngDbUtils.validate(arguments, ['string', 'function']);
+    thiz.unbind = function (eventName, cb) {
+      idbUtils.validate(arguments, ['string', 'function']);
 
-      if (!$eventsCallbacks[eventName]) return;
+      if (!eventsCallbacks[eventName]) return;
 
       // Buscar el cb
-      const idx = $eventsCallbacks[eventName].indexOf(cb);
+      const idx = eventsCallbacks[eventName].indexOf(cb);
 
       // Si se encontro el cb removerlo
       if (idx != -1){
-        $eventsCallbacks[eventName].splice(idx, 1);
+        eventsCallbacks[eventName].splice(idx, 1);
       }
 
     };
 
     // Dispara un evento
-    thiz.$trigger = function (eventName, args) {
-      $ngDbUtils.validate(arguments, ['string', 'object']);
+    thiz.trigger = function (eventName, args) {
+      idbUtils.validate(arguments, ['string', 'object']);
 
-      $log.log($dbName+'.v'+($dbVersion||1)+': '+eventName);
+      $log.log(dbName+'.v'+(dbVersion||1)+': '+eventName);
 
-      for(let i in $eventsCallbacks[eventName]){
-        $eventsCallbacks[eventName][i].apply(thiz, args);
+      for(let i in eventsCallbacks[eventName]){
+        eventsCallbacks[eventName][i].apply(thiz, args);
       }
 
     };
 
     // Callbacks para los errores
-    thiz.$error = function (cb) {
-      thiz.$bind($ngDbEvents.DB_ERROR, cb);
+    thiz.error = function (cb) {
+      thiz.bind(idbEvents.DB_ERROR, cb);
       return thiz;
     };
 
     // Abrir una Base de datos.
-    thiz.$open = function () {
-      if ($opened) return $openDefered;
+    thiz.open = function () {
+      if (opened) return openDefered;
 
       // Crear un nuevo defer
-      $opened = true;
+      opened = true;
 
       // dejamos abierta nuestra base de datos
-      indexedDB.deleteDatabase($dbName).onsuccess = function () {
+      indexedDB.deleteDatabase(dbName).onsuccess = function () {
 
-        const request = indexedDB.open($dbName, $dbVersion);
+        const rq = indexedDB.open(dbName, dbVersion);
 
-        request.onupgradeneeded = function (event) {
-          // Do something with request.result!
-          $upgradeNeededDefered.resolve(event, request);
+        rq.onupgradeneeded = function (event) {
+          // Do something with rq.result!
+          upgradeNeededDefered.resolve(event, rq);
 
         };
 
         // Asignar el manejador del resultado
-        request.onsuccess = function (event) {
-          // Do something with request.result!
-          $request = request;
-
+        rq.onsuccess = function (event) {
+          // Do something with rq.result!
+          request = rq;
+          
           // Asingar el manejador de errores a la BD
-          $request.onerror = function (event) {
+          rq.onerror = function (event) {
             $log.error('Database error: '+ event.target.errorCode);
-            thiz.$trigger($ngDbEvents.DB_ERROR, [event]);
+            thiz.trigger(idbEvents.DB_ERROR, [event]);
           }
 
-          $openDefered.resolve(event, request);
+          openDefered.resolve(event, rq);
 
         };
 
         // Asignar el manejador de errores
-          // Do something with request.errorCode!
-        request.onerror = function (event) {
-          $openDefered.reject(request.errorCode);
+          // Do something with rq.errorCode!
+        rq.onerror = function (event) {
+          openDefered.reject(rq.errorCode);
         }
 
       };
 
-      return $openDefered;
+      return openDefered;
 
     };
 
     // Agrega un nuevo modelo
-    thiz.$model = function (name) {
-      $ngDbUtils.validate(arguments, ['string']);
+    thiz.model = function (name) {
+      idbUtils.validate(arguments, ['string']);
 
       // Instanciar el modelo
-      let model = thiz.$models[name];
+      let model = thiz.models[name];
 
       // Si no existe el modelo crear
       if(!model)
-        model = $iModel(thiz, name);
+        model = idbModel(thiz, name);
 
       // Guardar el modelo en los modelos
-      thiz.$models[name] = model;
+      thiz.models[name] = model;
 
       // Retornar el modelo
       return model;
@@ -141,35 +141,35 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
     };
 
     // Crea el objectStore para un model
-    thiz.$createStore = function (modelName, modelId) {
-      $ngDbUtils.validate(arguments, ['string', ['object', 'undefined']]);
+    thiz.createStore = function (modelName, modelId) {
+      idbUtils.validate(arguments, ['string', ['object', 'undefined']]);
 
-      $upgradeNeededDefered.promise.then(function (event, request) {
-        request.result.createObjectStore(modelName, modelId);
+      upgradeNeededDefered.promise.then(function (event, rq) {
+        rq.result.createObjectStore(modelName, modelId);
       });
 
     };
 
     // Crea el objectStore para un model
-    thiz.$createIndex = function (modelName, indexName, fieldName, opts) {
-      $ngDbUtils.validate(arguments, ['string', 'string', 'string', ['object', 'undefined']]);
+    thiz.createIndex = function (modelName, indexName, fieldName, opts) {
+      idbUtils.validate(arguments, ['string', 'string', 'string', ['object', 'undefined']]);
 
-      $upgradeNeededDefered.promise.then(function (event, request) {
-        let store = request.transaction.objectStore(modelName);
+      upgradeNeededDefered.promise.then(function (event, rq) {
+        let store = rq.transaction.objectStore(modelName);
         store.createIndex(indexName, fieldName, opts);
       });
 
     };
 
     // Crea una transacción
-    thiz.$transaction = function(modelName, perms, action, cb) {
-      $ngDbUtils.validate(arguments, ['string', 'string', 'function', ['function', 'undefined']]);
+    thiz.transaction = function(modelName, perms, action, cb) {
+      idbUtils.validate(arguments, ['string', 'string', 'function', ['function', 'undefined']]);
 
-      let defered = $qs.defer(cb);
+      let defered = qs.defer(cb);
 
       // Cuando se abra la BD
-      $openDefered.promise.then(function (event, request) {
-        let tx = request.result.transaction(modelName, perms);
+      openDefered.promise.then(function (event, rq) {
+        let tx = rq.result.transaction(modelName, perms);
         let result = action(tx);
 
         // Transaccion completada satisfatoriamente
@@ -189,24 +189,24 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
     };
 
     // Inserta un registro en el modelo
-    thiz.$create = function (modelName, instance, cb) {
-      $ngDbUtils.validate(arguments, ['string', ['object', 'function'], ['function', 'undefined']]);
+    thiz.create = function (modelName, instance, cb) {
+      idbUtils.validate(arguments, ['string', ['object', 'function'], ['function', 'undefined']]);
 
-      let defered = $qs.defer(cb);
+      let defered = qs.defer(cb);
 
       // Se crea una transaccion
-      thiz.$transaction(modelName, 'readwrite', function (tx) {
-        let request = tx.objectStore(modelName).put(instance);
+      thiz.transaction(modelName, 'readwrite', function (tx) {
+        let rq = tx.objectStore(modelName).put(instance);
 
         // Transaccion completada satisfatoriamente
-        request.onsuccess  = function (event) {
+        rq.onsuccess  = function (event) {
           defered.resolve(event, instance);
         };
 
         // Se generó un error en la transacción
-        request.onerror  = function () {
-          // Could call request.preventDefault() to prevent the transaction from aborting.
-          defered.reject(request);
+        rq.onerror  = function () {
+          // Could call rq.preventDefault() to prevent the transaction from aborting.
+          defered.reject(rq);
         };
 
       });
@@ -214,14 +214,14 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
     };
 
     // Buscar en el modelo
-    thiz.$find = function (Model, modelName, scope, cb) {
-      $ngDbUtils.validate(arguments, ['function', 'string', ['object', 'undefined'], 'function']);
+    thiz.find = function (Model, modelName, scope, cb) {
+      idbUtils.validate(arguments, ['function', 'string', ['object', 'undefined'], 'function']);
 
-      let defered = $qs.defer(cb);
+      let defered = qs.defer(cb);
       let result = [];
 
       // Se crea una transaccion
-      thiz.$transaction(modelName, 'readonly', function (tx) {
+      thiz.transaction(modelName, 'readonly', function (tx) {
         let store = tx.objectStore(modelName);
         let request = store.openCursor();
 
@@ -232,7 +232,7 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
           if (!cursor) return defered.resolve(result);
           
           // Called for each matching record.
-          result.push(Model.$get(cursor.value));
+          result.push(Model.get(cursor.value));
           cursor.continue();
 
         };
@@ -244,11 +244,11 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
     // Crear alias para los eventos enlazar callbacks a los eventos
     let defereds;
     Object.keys(defereds = {
-      $onOpen: $openDefered,
-      $onUpgradeNeeded: $upgradeNeededDefered,
+      onOpen: openDefered,
+      onUpgradeNeeded: upgradeNeededDefered,
     }).map(function (key) {
       defereds[key].promise.done(function (err) {
-        let text = $dbName+'.v'+($dbVersion||1)+': '+key;
+        let text = dbName+'.v'+(dbVersion||1)+': '+key;
         if (err){
           $log.error(text, err);
         } else {
@@ -256,7 +256,7 @@ export default function iDbService ($qs, $iModel, $ngDbUtils, $ngDbEvents, $log)
         }
       });
       thiz[key] = function (cb) {
-        $ngDbUtils.validate(arguments, ['function']);
+        idbUtils.validate(arguments, ['function']);
         defereds[key].promise.done(cb);
         return thiz;
       };

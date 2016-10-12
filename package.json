@@ -1,5 +1,5 @@
 {
-  "name": "ng-db",
+  "name": "ng-idb",
   "version": "0.0.1",
   "description": "",
   "main": "src/index.js",
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SirIdeas/ng-db.git"
+    "url": "git+https://github.com/SirIdeas/ng-idb.git"
   },
   "keywords": [
     "angular",
@@ -20,9 +20,9 @@
   "author": "Alex J. Rondon <arondon@sirideas.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/SirIdeas/ng-db/issues"
+    "url": "https://github.com/SirIdeas/ng-idb/issues"
   },
-  "homepage": "https://github.com/SirIdeas/ng-db#readme",
+  "homepage": "https://github.com/SirIdeas/ng-idb#readme",
   "devDependencies": {},
   "dependencies": {
     "babel-core": "^6.14.0",

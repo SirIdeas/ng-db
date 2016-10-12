@@ -1,18 +1,19 @@
 'use strict';
 
-import ngDbUtils from './utils/ngDbUtils';
-import ngDbEvents from './utils/events';
+import idbUtils from './utils/idbUtils';
+import idbEvents from './utils/idbEvents';
 import qs from './utils/qs';
 
-import iDb from './services/iDb';
-import iModel from './services/iModel';
-import iLoopBackResource from './services/iLoopBackResource';
+import idb from './services/idb';
+import idbModel from './services/idbModel';
+import lb from './services/lb';
 
-angular.module('ngDb', [])
-  .constant('NG_DB_VERSION', '0.0.1')
-  .provider('iLoopBackResource', iLoopBackResource)
-  .service('$ngDbEvents', function () { return ngDbEvents; })
-  .service('$ngDbUtils', ngDbUtils)
-  .service('$qs', qs)
-  .service('$iDb', iDb)
-  .service('$iModel', iModel);
+lb(angular.module('ng.idb', []))
+  .constant('idbVersion', '0.0.1')
+  .service('idbEvents', idbEvents)
+  .service('idbUtils', idbUtils)
+  .service('qs', qs)
+
+  // Take of lb-services.js
+  .service('idb', idb)
+  .service('idbModel', idbModel)
