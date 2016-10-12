@@ -84,7 +84,8 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
       opened = true;
 
       // dejamos abierta nuestra base de datos
-      indexedDB.deleteDatabase(dbName).onsuccess = function () {
+      // indexedDB.deleteDatabase(dbName).onsuccess =
+      function ready() {
 
         const rq = indexedDB.open(dbName, dbVersion);
 
@@ -116,6 +117,8 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
         }
 
       };
+
+      ready();
 
       return openDefered;
 
@@ -196,7 +199,7 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
 
       // Se crea una transaccion
       thiz.transaction(modelName, 'readwrite', function (tx) {
-        let rq = tx.objectStore(modelName).put(instance);
+        let rq = tx.objectStore(modelName).put(instance.values());
 
         // Transaccion completada satisfatoriamente
         rq.onsuccess  = function (event) {
@@ -211,14 +214,52 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
 
       });
 
+      return defered.$promise;
+
+    };
+
+    // Obtiene un elemento por si key
+    thiz.get = function (Model, modelName, key, cb) {
+      idbUtils.validate(arguments, ['function', 'string', null, ['function', 'undefined']]);
+      
+      let defered = qs.defer(cb);
+      let instance = Model.getInstance(key);
+
+      instance.$promise = defered.promise;
+      instance.$resolved = false;
+
+      thiz.transaction(modelName, 'readonly', function (tx) {
+        let store = tx.objectStore(modelName);
+        let request = store.get(key);
+
+        request.onsuccess = function() {
+          if (request.result != undefined){
+            instance.setAttributes(request.result);
+            instance.$isNew = false;
+          }
+          instance.$resolved = true;
+          defered.resolve(instance);
+        };
+
+        request.onerror = function () {
+          defered.reject(instance);
+        };
+
+      });
+
+      return instance;
+
     };
 
     // Buscar en el modelo
     thiz.find = function (Model, modelName, scope, cb) {
-      idbUtils.validate(arguments, ['function', 'string', ['object', 'undefined'], 'function']);
+      idbUtils.validate(arguments, ['function', 'string', ['object', 'undefined'], ['function', 'undefined']]);
 
       let defered = qs.defer(cb);
       let result = [];
+
+      result.$promise = defered.promise;
+      result.$resolved = false;
 
       // Se crea una transaccion
       thiz.transaction(modelName, 'readonly', function (tx) {
@@ -227,17 +268,28 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
 
         request.onsuccess = function() {
           let cursor = request.result;
-
-          // No more matching records.
-          if (!cursor) return defered.resolve(result);
           
-          // Called for each matching record.
-          result.push(Model.get(cursor.value));
+          // No more matching records.
+          if (!cursor){
+            result.$resolved = true;
+            return defered.resolve(result);
+          }
+          
+          // Obtener la instancia
+          let record = Model.getInstanceFromObject(cursor.value);
+          record.$isNew = false; // Inicar que no es un registro nuevo
+
+          // Agregar al resultado
+          result.push(record);
+
+          // Buscar siguiente
           cursor.continue();
 
         };
 
       });
+
+      return result;
 
     };
 

@@ -3,36 +3,39 @@
 // Funcion para el servicio de la BD
 export default function idbModel (qs, idbUtils, lbResource) { 'ngInject';
 
-  return function idbModel(db, modelName) { let thiz = this;
+  return function idbModel($db, $modelName) { let thiz = this;
     idbUtils.validate(arguments, [null ,'string']);
 
     // Clave del modelo
-    let id = { keyPath: 'id', autoIncrement: true };
-    let instances = {};
-    let remote = null
+    let $id = { keyPath: 'id', autoIncrement: true };
+    let $fields = {};
+    let $instances = {};
+    let $remote = null;
 
     // Constuctor del modelo
     function Model(data) {
-      this.setAttributes(data);
+      this.setAttributes(data || {});
       this.constructor(data);
+      this.$isNew = true;
+      this.$record = null;
     };
 
     // Asigna el ID al modelo
-    Model.id = function (pId) {
+    Model.id = function (id) {
       idbUtils.validate(arguments, ['object']);
-      id = pId;
+      $id = id;
       return Model;
     };
 
     // Crea el objecto storage para el modelo.
     Model.createStore = function () {
-      db.createStore(modelName, id);
+      $db.createStore($modelName, $id);
       return Model;
     };
 
     // Agrega un index
     Model.index = function (indexName, fieldName, opts) {
-      db.createIndex(modelName, indexName, fieldName, opts);
+      $db.createIndex($modelName, indexName, fieldName, opts);
       return Model;
     };
 
@@ -43,10 +46,32 @@ export default function idbModel (qs, idbUtils, lbResource) { 'ngInject';
       return Model;
     };
 
+    // Asigna la especificación de los campos
+    Model.fields = function (fields) {
+      idbUtils.validate(arguments, ['object']);
+
+      $fields = {};
+      $fields[$id.keyPath] = {
+        "type": "number",
+        "required": true
+      };
+
+      Object.keys(fields).map(function (fieldName) {
+        let field = fields[fieldName];
+        if (typeof fields[fieldName] == 'string'){
+          field = { "type": field };
+        }
+        $fields[fieldName] = field;
+      });
+      
+      return Model;
+
+    };
+
     // Configura el remote api;
     Model.remote = function (url, args, actions) {
       idbUtils.validate(arguments, ['string', 'object', 'object']);
-      Model._remote = lbResource(url, args, actions);
+      $remote = lbResource(url, args, actions);
       return Model;
     };
 
@@ -56,8 +81,8 @@ export default function idbModel (qs, idbUtils, lbResource) { 'ngInject';
 
       // Si es un array
       if (data.length === undefined) {
-        let record = Model.get(data);
-        return record.create(cb);
+        return Model.getInstanceFromObject(record)
+          .create(cb);
       }
         
       // Obtener una copia del array
@@ -102,32 +127,74 @@ export default function idbModel (qs, idbUtils, lbResource) { 'ngInject';
 
     };
 
-    // Devuelve la instancia del model de las guardadas. Si no existe entonce
-    // se crea
-    Model.get = function (obj) {
-      idbUtils.validate(arguments, ['object']);
-
-      // Obtener el key del objeto
-      let key = Model.searchDeepField(obj, id.keyPath, function (obj, lastField) {
+    // Devuelve el valor correspondiente al key de un objeto
+    Model.getKeyFrom = function (data) {
+      return Model.searchDeepField(data, $id.keyPath, function (obj, lastField) {
         return obj[lastField];
       });
+    };
+
+    // Devuelve la instancia del model de las guardadas. Si no existe entonce
+    // se crea
+    Model.getInstance = function (key) {
 
       // El objeto no tiene ID
-      if (!key) 
-        return new Model(obj);
+      if (!key) {
+        return new Model();
+      }
 
       // No existe la instancia entonce se crea
-      if (!instances[key])
-        instances[key] = new Model(obj);
+      if (!$instances[key]){
+        $instances[key] = new Model();
+      }
       
-      return instances[key];
+      return $instances[key];
+    };
+
+    // Crea una instancia del modelo a partir de un object
+    Model.getInstanceFromObject = function (data) {
+      idbUtils.validate(arguments, ['object']);
+
+      let record = Model.getInstance(Model.getKeyFrom(data));
+      record.setAttributes(data);
+      return record;
+
+    };
+
+    // Busca un registro en la objectStore del modelo.
+    Model.get = function (key, cb) {
+
+      return $db.get(Model, $modelName, key, cb);
+
     };
 
     // Buscar en el modelo
     Model.find = function (scope, cb) {
       let args = Array.prototype.slice.call(arguments);
       cb = args.pop(); scope = args.pop();
-      return db.find(Model, modelName, scope, cb);
+      if ($remote) {
+        // Buscar los registros en la API
+        $remote.find(scope, cb).$promise
+          .then(function (result) {
+            result.map(function (record, idx) {
+
+              Model.get(Model.getKeyFrom(record)).$promise
+                .then(function (instance) {
+                  instance
+                    .setAttributes(record)
+                    .resource(record);
+                  if (instance.$isNew){
+                    instance.create();
+                  }
+                });
+
+            });
+          })
+          .catch(function (err) {
+            console.log(['err', err])
+          });
+      }
+      return $db.find(Model, $modelName, scope, cb);
     };
 
     // Asigna los atributos
@@ -137,6 +204,8 @@ export default function idbModel (qs, idbUtils, lbResource) { 'ngInject';
       Object.keys(data).map(function (property) {
         thiz.set(property, data[property]);
       });
+
+      return thiz;
 
     };
 
@@ -155,24 +224,52 @@ export default function idbModel (qs, idbUtils, lbResource) { 'ngInject';
       });
     };
 
+    // Obtiene los valores reales actuales para guardar en el store
+    Model.prototype.values = function () { let thiz = this;
+      let values = {};
+
+      Object.keys($fields).map(function (field) {
+        Model.searchDeepField(values, field, function (obj, lastField) {
+          obj[lastField] = thiz.get(field);
+        });
+      });
+
+      return values;
+
+    };
+
     // Consturctor que se puede sobre escribir
     Model.prototype.constructor = function (data) {
     };
 
     // Guarda los datos del objeto
     Model.prototype.create = function (cb){ let thiz = this;
-      return db.create(modelName, this, function (err, event) {
+      return $db.create($modelName, this, function (err, event) {
         if (err) { if (cb) cb(err); return; };
 
         // Asignar el generado al modelo
-        thiz.set(id.keyPath, event.target.result)
+        thiz.set($id.keyPath, event.target.result);
+        thiz.$isNew = false;
 
-        // Guardar la instancia en la colecion de instancias
-        instances[thiz.get(id.keyPath)] = thiz;
+        // Si la instancia creada no concuerda con la guardada
+        if ($instances[thiz.get($id.keyPath)]) {
+          if ($instances[thiz.get($id.keyPath)] !== thiz){
+            throw new Error('idbModel.TwoInstancesWithSameKey');
+          }
+        }else {
+          // Guardar la instancia en la colecion de instancias
+          $instances[thiz.get($id.keyPath)] = thiz;
+        }
 
         if (cb) cb.apply(null, [null].concat(Array.prototype.slice.call(arguments)));
 
       });
+    };
+
+    // Asigna la instancia del registro
+    Model.prototype.resource = function (record) {
+      this.$record = record;
+      return this;
     };
 
     return Model;

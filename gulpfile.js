@@ -65,7 +65,7 @@ gulp.task('minify', function () {
 
 gulp.task('watch', function (callback) {
 
-  webpackWrapper(callback)
+  webpackWrapper(callback);
   return gulp.watch([bower.name.concat('.js')], ['minify']);
 
 });

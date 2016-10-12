@@ -2,20 +2,10 @@
 
 export default function idbUtils ($q) { 'ngInject'
   
-  // Dvuelve el host de una URL
-  function getHost(url) {
-    let m = url.match(/^(?:https?:)?\/\/([^\/]+)/);
-    return m ? m[1] : null;
-  }
-
   // Funcion para determinar si es un callback válido o no
-  function isCallback (cb, throwError) {
+  function isCallback (cb) {
 
-    if (typeof cb == 'function' || cb == null || cb == undefined){
-      return true;
-    }
-
-    return false;
+    return typeof cb == 'function' || cb == null || cb == undefined;
 
   }
 
@@ -56,12 +46,12 @@ export default function idbUtils ($q) { 'ngInject'
           mustBe(args[i], types[i]);
           continue;
         }
-        if (typeof types[i] == 'funcion'){
-          types[i](args[i]);
-          continue;
+        if (typeof types[i] == 'function'){
+          if(types[i](args[i]))
+            continue;
         }
 
-        var err = new Error('Invalid validator to: '+values[i]+' must be '+types[i]);
+        var err = new Error('Invalid validator to: '+args[i]+' must be '+types[i]);
         err.name = 'InvalidValidator'
         throw err;
 
@@ -71,7 +61,6 @@ export default function idbUtils ($q) { 'ngInject'
   }
 
   return {
-    getHost: getHost,
     isCallback: isCallback,
     mustBeCallback: mustBeCallback,
     mustBe: mustBe,
