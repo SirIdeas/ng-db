@@ -6,9 +6,14 @@ import qs from './utils/qs';
 
 import idb from './services/idb';
 import idbModel from './services/idbModel';
+import idbQuery from './services/idbQuery';
+import idbSocket from './services/idbSocket';
+
 import lb from './services/lb';
 
 lb(angular.module('ng.idb', []))
+  .constant('io', io)
+  
   .constant('idbVersion', '0.0.1')
   .service('idbEvents', idbEvents)
   .service('idbUtils', idbUtils)
@@ -17,3 +22,5 @@ lb(angular.module('ng.idb', []))
   // Take of lb-services.js
   .service('idb', idb)
   .service('idbModel', idbModel)
+  .service('idbQuery', idbQuery)
+  .service('idbSocket', idbSocket)

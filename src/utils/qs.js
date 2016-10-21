@@ -2,7 +2,7 @@
 
 export default function qs () { 'ngInject'
   
-  function qsClass (cb) { let thiz = this;
+  function qsClass (cb) { const thiz = this;
     
     let thens = [];
     let thensReady = [];

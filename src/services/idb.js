@@ -1,7 +1,7 @@
 'use strict';
 
 // Funcion para el servicio de la BD
-export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInject';
+export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idbQuery, idbSocket, lbAuth) { 'ngInject';
 
   // En la siguiente linea, puede incluir prefijos de implementacion que quiera probar.
   const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -17,28 +17,29 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
   }
 
   // Clase para la creación de instancias de la BD
-  return function idb(dbName, dbVersion) { const thiz = this;
-    idbUtils.validate(arguments, ['string', 'number']);
+  function idb($dbName, $dbVersion, $socket) { const thiz = this;
+    idbUtils.validate(arguments, ['string', 'number', ['object', 'undefined'], ['object', 'undefined']]);
 
     // Manejadores de eventos.
-    let eventsCallbacks = {};
-    let upgradeNeededDefered = qs.defer();
-    let openDefered = qs.defer();
-    let opened = false;
+    let $eventsCallbacks = {};
+    let $upgradeNeededDefered = qs.defer();
+    let $openDefered = qs.defer();
+    let $socketConnectedDefered = qs.defer();
+    let $opened = false;
 
     // Instancia de la base de datos;
-    let request = null;
+    let $request = null;
     thiz.models = {};
-    
+
     // Agregar un manejador de evento
     thiz.bind = function (eventName, cb) {
       idbUtils.validate(arguments, ['string', 'function']);
 
-      if (!eventsCallbacks[eventName]){
-        eventsCallbacks[eventName] = [];
+      if (!$eventsCallbacks[eventName]){
+        $eventsCallbacks[eventName] = [];
       }
 
-      eventsCallbacks[eventName].push(cb);
+      $eventsCallbacks[eventName].push(cb);
 
     };
 
@@ -46,14 +47,14 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
     thiz.unbind = function (eventName, cb) {
       idbUtils.validate(arguments, ['string', 'function']);
 
-      if (!eventsCallbacks[eventName]) return;
+      if (!$eventsCallbacks[eventName]) return;
 
       // Buscar el cb
-      const idx = eventsCallbacks[eventName].indexOf(cb);
+      const idx = $eventsCallbacks[eventName].indexOf(cb);
 
       // Si se encontro el cb removerlo
       if (idx != -1){
-        eventsCallbacks[eventName].splice(idx, 1);
+        $eventsCallbacks[eventName].splice(idx, 1);
       }
 
     };
@@ -62,10 +63,10 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
     thiz.trigger = function (eventName, args) {
       idbUtils.validate(arguments, ['string', 'object']);
 
-      $log.log(dbName+'.v'+(dbVersion||1)+': '+eventName);
+      $log.log($dbName+'.v'+($dbVersion||1)+': '+eventName);
 
-      for(let i in eventsCallbacks[eventName]){
-        eventsCallbacks[eventName][i].apply(thiz, args);
+      for(let i in $eventsCallbacks[eventName]){
+        $eventsCallbacks[eventName][i].apply(thiz, args);
       }
 
     };
@@ -78,27 +79,27 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
 
     // Abrir una Base de datos.
     thiz.open = function () {
-      if (opened) return openDefered;
+      if ($opened) return $openDefered;
 
       // Crear un nuevo defer
-      opened = true;
+      $opened = true;
 
       // dejamos abierta nuestra base de datos
-      // indexedDB.deleteDatabase(dbName).onsuccess =
+      // indexedDB.deleteDatabase($dbName).onsuccess =
       function ready() {
 
-        const rq = indexedDB.open(dbName, dbVersion);
+        const rq = indexedDB.open($dbName, $dbVersion);
 
         rq.onupgradeneeded = function (event) {
           // Do something with rq.result!
-          upgradeNeededDefered.resolve(event, rq);
+          $upgradeNeededDefered.resolve(event, rq);
 
         };
 
         // Asignar el manejador del resultado
         rq.onsuccess = function (event) {
           // Do something with rq.result!
-          request = rq;
+          $request = rq;
           
           // Asingar el manejador de errores a la BD
           rq.onerror = function (event) {
@@ -106,34 +107,35 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
             thiz.trigger(idbEvents.DB_ERROR, [event]);
           }
 
-          openDefered.resolve(event, rq);
+          $openDefered.resolve(event, rq);
 
         };
 
         // Asignar el manejador de errores
           // Do something with rq.errorCode!
         rq.onerror = function (event) {
-          openDefered.reject(rq.errorCode);
+          $openDefered.reject(rq.errorCode);
         }
 
       };
 
       ready();
 
-      return openDefered;
+      return $openDefered;
 
     };
 
     // Agrega un nuevo modelo
-    thiz.model = function (name) {
+    thiz.model = function (name, socket) {
       idbUtils.validate(arguments, ['string']);
 
       // Instanciar el modelo
       let model = thiz.models[name];
 
       // Si no existe el modelo crear
-      if(!model)
-        model = idbModel(thiz, name);
+      if(!model){
+        model = idbModel(thiz, name, socket || $socket);
+      }
 
       // Guardar el modelo en los modelos
       thiz.models[name] = model;
@@ -143,11 +145,18 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
 
     };
 
+    // Cra una instancia de un query
+    thiz.query = function (Model, filters) {
+
+      return new idbQuery(thiz, Model, filters);
+
+    };
+
     // Crea el objectStore para un model
     thiz.createStore = function (modelName, modelId) {
       idbUtils.validate(arguments, ['string', ['object', 'undefined']]);
 
-      upgradeNeededDefered.promise.then(function (event, rq) {
+      $upgradeNeededDefered.promise.then(function (event, rq) {
         rq.result.createObjectStore(modelName, modelId);
       });
 
@@ -157,7 +166,7 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
     thiz.createIndex = function (modelName, indexName, fieldName, opts) {
       idbUtils.validate(arguments, ['string', 'string', 'string', ['object', 'undefined']]);
 
-      upgradeNeededDefered.promise.then(function (event, rq) {
+      $upgradeNeededDefered.promise.then(function (event, rq) {
         let store = rq.transaction.objectStore(modelName);
         store.createIndex(indexName, fieldName, opts);
       });
@@ -171,7 +180,7 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
       let defered = qs.defer(cb);
 
       // Cuando se abra la BD
-      openDefered.promise.then(function (event, rq) {
+      $openDefered.promise.then(function (event, rq) {
         let tx = rq.result.transaction(modelName, perms);
         let result = action(tx);
 
@@ -219,29 +228,35 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
     };
 
     // Obtiene un elemento por si key
-    thiz.get = function (Model, modelName, key, cb) {
+    thiz.get = function (Model, key, cb) {
       idbUtils.validate(arguments, ['function', 'string', null, ['function', 'undefined']]);
       
+      let data = {};
+      Model.searchDeepField({}, Model.getKeyPath(), function (obj, lastField) {
+        obj[lastField] = key;
+      });
+
+      const modelName = Model.getModelName();
       let defered = qs.defer(cb);
-      let instance = Model.getInstance(key);
+      let instance = Model.getInstance(key, data);
 
       instance.$promise = defered.promise;
       instance.$resolved = false;
 
       thiz.transaction(modelName, 'readonly', function (tx) {
         let store = tx.objectStore(modelName);
-        let request = store.get(key);
+        let rq = store.get(key);
 
-        request.onsuccess = function() {
-          if (request.result != undefined){
-            instance.setAttributes(request.result);
+        rq.onsuccess = function() {
+          if (rq.result != undefined){
+            instance.setAttributes(rq.result, true);
             instance.$isNew = false;
           }
           instance.$resolved = true;
           defered.resolve(instance);
         };
 
-        request.onerror = function () {
+        rq.onerror = function () {
           defered.reject(instance);
         };
 
@@ -252,9 +267,9 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
     };
 
     // Buscar en el modelo
-    thiz.find = function (Model, modelName, scope, cb) {
-      idbUtils.validate(arguments, ['function', 'string', ['object', 'undefined'], ['function', 'undefined']]);
-
+    thiz.find = function (Model, filters, cb) {
+      idbUtils.validate(arguments, ['function', ['object', 'undefined'], ['function', 'undefined']]);
+      const modelName = Model.getModelName();
       let defered = qs.defer(cb);
       let result = [];
 
@@ -264,10 +279,10 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
       // Se crea una transaccion
       thiz.transaction(modelName, 'readonly', function (tx) {
         let store = tx.objectStore(modelName);
-        let request = store.openCursor();
+        let rq = store.openCursor();
 
-        request.onsuccess = function() {
-          let cursor = request.result;
+        rq.onsuccess = function() {
+          let cursor = rq.result;
           
           // No more matching records.
           if (!cursor){
@@ -296,11 +311,12 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
     // Crear alias para los eventos enlazar callbacks a los eventos
     let defereds;
     Object.keys(defereds = {
-      onOpen: openDefered,
-      onUpgradeNeeded: upgradeNeededDefered,
+      onOpen: $openDefered,
+      onUpgradeNeeded: $upgradeNeededDefered,
+      onSocketConnected: $socketConnectedDefered
     }).map(function (key) {
       defereds[key].promise.done(function (err) {
-        let text = dbName+'.v'+(dbVersion||1)+': '+key;
+        let text = $dbName+'.v'+($dbVersion||1)+': '+key;
         if (err){
           $log.error(text, err);
         } else {
@@ -315,5 +331,7 @@ export default function idb (qs, idbModel, idbUtils, idbEvents, $log) { 'ngInjec
     });
 
   };
+
+  return idb;
 
 }

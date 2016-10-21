@@ -31,7 +31,7 @@ export default function lb (module) {
       return localStorage[key] || sessionStorage[key] || null;
     }
 
-    function lbAuth() { let thiz = this;
+    function lbAuth() { const thiz = this;
 
       props.forEach(function(name) {
         thiz[name] = load(name);
@@ -39,20 +39,20 @@ export default function lb (module) {
       thiz.currentUserData = null;
     }
 
-    lbAuth.prototype.save = function() { let thiz = this;
+    lbAuth.prototype.save = function() { const thiz = this;
       let storage = thiz.rememberMe ? localStorage : sessionStorage;
       props.forEach(function(name) {
         save(storage, name, thiz[name]);
       });
     };
 
-    lbAuth.prototype.setUser = function(accessTokenId, userId, userData) { let thiz = this;
+    lbAuth.prototype.setUser = function(accessTokenId, userId, userData) { const thiz = this;
       thiz.accessTokenId = accessTokenId;
       thiz.currentUserId = userId;
       thiz.currentUserData = userData;
     };
 
-    lbAuth.prototype.clearUser = function() { let thiz = this;
+    lbAuth.prototype.clearUser = function() { const thiz = this;
       thiz.accessTokenId = null;
       thiz.currentUserId = null;
       thiz.currentUserData = null;
@@ -98,7 +98,7 @@ export default function lb (module) {
 
   };
 
-  let lbResource = function() { 'ngInject'; let thiz = this;
+  let lbResource = function() { 'ngInject'; const thiz = this;
 
     let options = {
       urlBase: "/api",
@@ -201,5 +201,5 @@ export default function lb (module) {
     .factory('lbAuthRequestInterceptor', lbAuthRequestInterceptor)
     .config(['$httpProvider', function($httpProvider) { 'ngInject';
       $httpProvider.interceptors.push('lbAuthRequestInterceptor');
-    }])
+    }]);
 }
