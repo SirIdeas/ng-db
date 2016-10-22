@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SirIdeas/ng-idb.git"
+    "url": "git+https://github.com/arondn2/ng-idb.git"
   },
   "keywords": [
     "angular",
@@ -20,9 +20,9 @@
   "author": "Alex J. Rondon <arondon@sirideas.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/SirIdeas/ng-idb/issues"
+    "url": "https://github.com/arondn2/ng-idb/issues"
   },
-  "homepage": "https://github.com/SirIdeas/ng-idb#readme",
+  "homepage": "https://github.com/arondn2/ng-idb#readme",
   "devDependencies": {},
   "dependencies": {
     "babel-core": "^6.14.0",

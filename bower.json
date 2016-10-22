@@ -1,6 +1,6 @@
 {
   "name": "ng-idb",
-  "homepage": "https://github.com/SirIdeas/ng-idb",
+  "homepage": "https://github.com/arondn2/ng-idb",
   "authors": [
     "Alex J. Rondon <arondon@sirideas.com>"
   ],
@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/SirIdeas/ng-idb.git"
+    "url": "git://github.com/arondn2/ng-idb.git"
   },
   "license": "MIT",
   "ignore": [

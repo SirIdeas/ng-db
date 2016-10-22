@@ -1,9 +1,6 @@
-# ng-db
+# ng-idb
 
 Paquete Bower para usar archivos assets de forma offline descargando estos en el sistema de archivos local mediante la [Api para Archivos de HTML5](https://dev.w3.org/2009/dap/file-system/file-dir-sys.html).
-
-## Demo
-[Demo](https://sirideas.github.io/ng-db)
 
 ## Dependencias
 
@@ -14,26 +11,26 @@ Paquete Bower para usar archivos assets de forma offline descargando estos en el
 Bower:
 
 ```
-$ bower install ng-db
+$ bower install ng-idb
 ```
 
-O puedes descargar el paquete [aquí](https://codeload.github.com/SirIdeas/ng-db/zip/master).
+O puedes descargar el paquete [aquí](https://codeload.github.com/arondn2/ng-idb/zip/master).
 
 Agrega el archivo javascript al html, por ejemplo:
 
 ```html
-<script src="ng-db/ng-db.js"></script>
+<script src="ng-idb/ng-idb.js"></script>
 ```
 
-Finalmente, debes agregar `ngOfflineAssets` a tu módulo de dependencias:
+Finalmente, debes agregar `ng.idb` a tu módulo de dependencias:
 
 ```javascript
-angular.module('app', ['ngOfflineAssets'])
+angular.module('app', ['ng.idb'])
 ```
 
 ## Versiones del README
-[Inglés](README.md)
 [Español](README.es.md)
+[Inglés](README.md)
 
 ## Licencia
-Liberado bajo [la licencia MIT](https://github.com/SirIdeas/ng-db/blob/master/LICENSE)
+Liberado bajo [la licencia MIT](https://github.com/arondn2/ng-idb/blob/master/LICENSE)

@@ -7,19 +7,17 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     idbUtils.validate(arguments, [null ,'string']);
 
     // Clave del modelo
-    let $id = { keyPath: 'id', autoIncrement: true };
+    const $id = { keyPath: 'id', autoIncrement: true };
+    const $instances = {};
     let $fields = {};
-    let $instances = {};
     let $remote = null;
 
     // Constuctor del modelo
-    function Model(data, stored) {
-      idbUtils.validate(arguments, [['object', 'undefined'] ,'boolean']);
+    function Model(data) {
+      idbUtils.validate(arguments, [['object', 'undefined']]);
 
-      this.$isNew = true;
       this.$record = null;
       this.$originalValues = {};
-      this.$stored = stored;
       
       this.setAttributes(data || {}, true);
       this.constructor(data);
@@ -79,6 +77,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     // Método que permite modificar model.
     Model.build = function (buildCallback) {
       idbUtils.validate(arguments, ['function']);
+
       buildCallback(Model);
       return Model;
     };
@@ -108,6 +107,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     // Configura el remote api;
     Model.remote = function (url, args, actions) {
       idbUtils.validate(arguments, ['string', 'object', 'object']);
+
       $remote = lbResource(url, args, actions);
       return Model;
     };
@@ -118,14 +118,14 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
       // Si es un array
       if (data.length === undefined) {
-        return Model.getInstanceFromObject(record)
-          .create(cb);
+        return Model.getInstanceFromObject(data, null)
+          .save(cb);
       }
         
       // Obtener una copia del array
-      let arr = Array.prototype.slice.call(data);
-      let result = [];
-      let defered = qs.defer(cb);
+      const arr = Array.prototype.slice.call(data);
+      const result = [];
+      const defered = qs.defer(cb);
 
       (function iteration() {
                 
@@ -150,13 +150,13 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     Model.searchDeepField = function (obj, field, cb) {
       idbUtils.validate(arguments, ['object', 'string', 'function']);
 
-      let fields = field.split('.');
-      let lastField = fields.pop();
+      const fields = field.split('.');
+      const lastField = fields.pop();
 
       return (function _set(obj) {
         if (fields.length == 0)
           return cb(obj, lastField);
-        let field = fields.shift();
+        const field = fields.shift();
         if (typeof obj[field] === 'undefined')
           obj[field] = {};
         return _set(obj[field]);
@@ -174,6 +174,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     // Devuelve la instancia del model de las guardadas. Si no existe entonce
     // se crea
     Model.getInstance = function (key, data) {
+      idbUtils.validate(arguments, [['string', 'number', 'undefined'], ['object', 'undefined']]);
 
       // El objeto no tiene ID
       if (!key) {
@@ -182,7 +183,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
       // No existe la instancia entonce se crea
       if (!$instances[key]){
-        $instances[key] = new Model(data, true);
+        $instances[key] = new Model(data);
       }
       
       return $instances[key];
@@ -192,8 +193,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     Model.getInstanceFromObject = function (data) {
       idbUtils.validate(arguments, ['object']);
 
-      let record = Model.getInstance(Model.getKeyFrom(data), data);
-      return record;
+      return Model.getInstance(Model.getKeyFrom(data), data);
 
     };
 
@@ -236,7 +236,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
     // Asigna los atributos
     Model.prototype.setAttributes = function (data, original) { const thiz = this;
-      idbUtils.validate(arguments, ['object']);
+      idbUtils.validate(arguments, ['object', 'boolean']);
       
       Object.keys(data).map(function (property) {
         thiz.set(property, data[property], original);
@@ -248,26 +248,71 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
     // Devuelve el valor de una propiedad
     Model.prototype.get = function (field) { const thiz = this;
+
       return Model.searchDeepField(thiz, field, function (obj, lastField) {
         return obj[lastField];
       });
+
     };
+
+    // Asigna el ID del objeto
+    Model.prototype.setKey = function (newKey) { const thiz = this;
+      
+      const oldKey = Model.getKeyFrom(thiz);
+
+      Model.searchDeepField(thiz, $id.keyPath, function (obj, lastField) {
+        obj[lastField] = newKey;
+      });
+
+      if (oldKey !== newKey) {
+
+        if (oldKey && $instances[oldKey] && $instances[oldKey] != thiz) {
+          throw new Error('Model.InstanceOfOldKeyIsNotSame');
+        }
+        if (newKey && $instances[newKey] && $instances[newKey] != thiz) {
+          throw new Error('Model.InstanceOfNewKeyIsNotSame');
+        }
+
+        // Eliminar anterior
+        if (oldKey && $instances[oldKey]) {
+          delete $instances[oldKey];
+        }
+
+        // Agregar nueva
+        if (newKey && !$instances[newKey]) {
+          $instances[newKey] = thiz;
+        }
+
+      }
+
+      return thiz;
+
+    }
 
     // Asigna in valor a un campo
     Model.prototype.set = function (field, value, original) { const thiz = this;
+      idbUtils.validate(arguments, ['string', null, 'boolean']);
 
-      Model.searchDeepField(thiz.$originalValues, field, function (obj, lastField) {
-        obj[lastField] = value;
-      });
-      Model.searchDeepField(thiz, field, function (obj, lastField) {
-        obj[lastField] = value;
-      });
+      if (field === $id.keyPath){
+        thiz.setKey(value);
+      } else {
+        Model.searchDeepField(thiz, field, function (obj, lastField) {
+          obj[lastField] = value;
+        });
+      }
+
+      if (original) {
+        Model.searchDeepField(thiz.$originalValues, field, function (obj, lastField) {
+          obj[lastField] = value;
+        });
+      }
+
       return thiz;
     };
 
     // Obtiene los valores reales actuales para guardar en el store
     Model.prototype.values = function () { const thiz = this;
-      let values = {};
+      const values = {};
 
       Object.keys($fields).map(function (field) {
         Model.searchDeepField(values, field, function (obj, lastField) {
@@ -283,24 +328,24 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     Model.prototype.constructor = function (data) {
     };
 
+    // Devuelve si el objeto está almacenado
+    Model.prototype.isStored = function () {
+
+      return $instances[this.get($id.keyPath)] === this;
+
+    };
+
     // Guarda los datos del objeto
-    Model.prototype.create = function (cb){ const thiz = this;
-      return $db.create($modelName, this, function (err, event) {
+    Model.prototype.save = function (cb){ const thiz = this;
+      idbUtils.validate(arguments, ['function', 'undefined']);
+
+      return $db.put($modelName, this, function (err, event) {
         if (err) { if (cb) cb(err); return; };
 
         // Asignar el generado al modelo
-        thiz.set($id.keyPath, event.target.result);
+        const key = event.target.result;
+        thiz.setKey(key);
         thiz.$isNew = false;
-
-        // Si la instancia creada no concuerda con la guardada
-        if ($instances[thiz.get($id.keyPath)]) {
-          if ($instances[thiz.get($id.keyPath)] !== thiz){
-            throw new Error('idbModel.TwoInstancesWithSameKey');
-          }
-        }else {
-          // Guardar la instancia en la colecion de instancias
-          $instances[thiz.get($id.keyPath)] = thiz;
-        }
 
         if (cb) cb.apply(null, [null].concat(Array.prototype.slice.call(arguments)));
 
@@ -316,8 +361,9 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
         eventName: 'update',
         modelId: thiz.get(Model.getKeyPath()),
       }, function (data) {
+        thiz.setAttributes(data || {}, true);
         $timeout(function () {
-          thiz.setAttributes(data || {}, true);
+          thiz.save();
         });
       });
 

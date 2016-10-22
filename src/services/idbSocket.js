@@ -7,7 +7,7 @@ export default function idbSocketService($log, io, idbUtils) { 'ngInject'; const
   function idbSocket ($urlServer, $accessTokenId, $currentUserId) { const thiz = this;
     idbUtils.validate(arguments, ['string', ['string', 'number'], ['string', 'number']]);
 
-    let $listeners =  [];
+    const $listeners =  [];
     let $socket = null;
     $urlServer = $urlServer || $defUrlServer;
 

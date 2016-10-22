@@ -4,13 +4,13 @@ export default function lb (module) {
 
   // Dvuelve el host de una URL
   function getHost(url) {
-    let m = url.match(/^(?:https?:)?\/\/([^\/]+)/);
+    const m = url.match(/^(?:https?:)?\/\/([^\/]+)/);
     return m ? m[1] : null;
   }
 
   let urlBaseHost = location.host;
 
-  let lbAuth = function() { 'ngInject'
+  const lbAuth = function() { 'ngInject'
     const props = ['accessTokenId', 'currentUserId', 'rememberMe'];
     const propsPrefix = '$idb-lb$';
     
@@ -40,7 +40,7 @@ export default function lb (module) {
     }
 
     lbAuth.prototype.save = function() { const thiz = this;
-      let storage = thiz.rememberMe ? localStorage : sessionStorage;
+      const storage = thiz.rememberMe ? localStorage : sessionStorage;
       props.forEach(function(name) {
         save(storage, name, thiz[name]);
       });
@@ -69,7 +69,7 @@ export default function lb (module) {
 
   };
 
-  let lbAuthRequestInterceptor = function($q, lbAuth) { 'ngInject';
+  const lbAuthRequestInterceptor = function($q, lbAuth) { 'ngInject';
     
     return {
       request: function(config) {
@@ -84,7 +84,7 @@ export default function lb (module) {
         } else if (config.__isGetCurrentUser__) {
           // Return a stub 401 error for User.getCurrent() when
           // there is no user logged in
-          let res = {
+          const res = {
             body: { error: { status: 401 }},
             status: 401,
             config: config,
@@ -98,9 +98,9 @@ export default function lb (module) {
 
   };
 
-  let lbResource = function() { 'ngInject'; const thiz = this;
+  const lbResource = function() { 'ngInject'; const thiz = this;
 
-    let options = {
+    const options = {
       urlBase: "/api",
       authHeader: 'authorization',
     };
@@ -160,14 +160,14 @@ export default function lb (module) {
 
     thiz.$get = function($resource) { 'ngInject';
 
-      let lbResource = function(url, params, actions) {
+      const lbResource = function(url, params, actions) {
 
         Object.keys(actions).map(function (key) {
           actions[key].originalUrl = actions[key].url;
           actions[key].url = options.urlBase + actions[key].url;
         });
 
-        let resource = $resource(options.urlBase + url, params, actions);
+        const resource = $resource(options.urlBase + url, params, actions);
 
         // Angular always calls POST on $save()
         // This hack is based on
@@ -175,7 +175,7 @@ export default function lb (module) {
         resource.prototype.$save = function(success, error) {
           // Fortunately, LoopBack provides a convenient `upsert` method
           // that exactly fits our needs.
-          let result = resource.upsert.call(this, {}, this, success, error);
+          const result = resource.upsert.call(this, {}, this, success, error);
           return result.$promise || result;
         };
         return resource;

@@ -21,10 +21,10 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     idbUtils.validate(arguments, ['string', 'number', ['object', 'undefined'], ['object', 'undefined']]);
 
     // Manejadores de eventos.
-    let $eventsCallbacks = {};
-    let $upgradeNeededDefered = qs.defer();
-    let $openDefered = qs.defer();
-    let $socketConnectedDefered = qs.defer();
+    const $eventsCallbacks = {};
+    const $upgradeNeededDefered = qs.defer();
+    const $openDefered = qs.defer();
+    const $socketConnectedDefered = qs.defer();
     let $opened = false;
 
     // Instancia de la base de datos;
@@ -85,7 +85,6 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
       $opened = true;
 
       // dejamos abierta nuestra base de datos
-      // indexedDB.deleteDatabase($dbName).onsuccess =
       function ready() {
 
         const rq = indexedDB.open($dbName, $dbVersion);
@@ -119,6 +118,7 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
 
       };
 
+      // indexedDB.deleteDatabase($dbName).onsuccess = ready;
       ready();
 
       return $openDefered;
@@ -167,7 +167,7 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
       idbUtils.validate(arguments, ['string', 'string', 'string', ['object', 'undefined']]);
 
       $upgradeNeededDefered.promise.then(function (event, rq) {
-        let store = rq.transaction.objectStore(modelName);
+        const store = rq.transaction.objectStore(modelName);
         store.createIndex(indexName, fieldName, opts);
       });
 
@@ -177,12 +177,12 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     thiz.transaction = function(modelName, perms, action, cb) {
       idbUtils.validate(arguments, ['string', 'string', 'function', ['function', 'undefined']]);
 
-      let defered = qs.defer(cb);
+      const defered = qs.defer(cb);
 
       // Cuando se abra la BD
       $openDefered.promise.then(function (event, rq) {
-        let tx = rq.result.transaction(modelName, perms);
-        let result = action(tx);
+        const tx = rq.result.transaction(modelName, perms);
+        const result = action(tx);
 
         // Transaccion completada satisfatoriamente
         tx.oncomplete = function (event) {
@@ -201,14 +201,16 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     };
 
     // Inserta un registro en el modelo
-    thiz.create = function (modelName, instance, cb) {
+    thiz.put = function (modelName, instance, cb) {
       idbUtils.validate(arguments, ['string', ['object', 'function'], ['function', 'undefined']]);
 
-      let defered = qs.defer(cb);
+      const defered = qs.defer(cb);
 
       // Se crea una transaccion
       thiz.transaction(modelName, 'readwrite', function (tx) {
-        let rq = tx.objectStore(modelName).put(instance.values());
+        const rq = tx.objectStore(modelName).put({
+          values: instance.values(),
+        });
 
         // Transaccion completada satisfatoriamente
         rq.onsuccess  = function (event) {
@@ -231,21 +233,21 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     thiz.get = function (Model, key, cb) {
       idbUtils.validate(arguments, ['function', 'string', null, ['function', 'undefined']]);
       
-      let data = {};
+      const data = {};
       Model.searchDeepField({}, Model.getKeyPath(), function (obj, lastField) {
         obj[lastField] = key;
       });
 
       const modelName = Model.getModelName();
-      let defered = qs.defer(cb);
-      let instance = Model.getInstance(key, data);
+      const defered = qs.defer(cb);
+      const instance = Model.getInstance(key, data);
 
       instance.$promise = defered.promise;
       instance.$resolved = false;
 
       thiz.transaction(modelName, 'readonly', function (tx) {
-        let store = tx.objectStore(modelName);
-        let rq = store.get(key);
+        const store = tx.objectStore(modelName);
+        const rq = store.get(key);
 
         rq.onsuccess = function() {
           if (rq.result != undefined){
@@ -270,19 +272,19 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     thiz.find = function (Model, filters, cb) {
       idbUtils.validate(arguments, ['function', ['object', 'undefined'], ['function', 'undefined']]);
       const modelName = Model.getModelName();
-      let defered = qs.defer(cb);
-      let result = [];
+      const defered = qs.defer(cb);
+      const result = [];
 
       result.$promise = defered.promise;
       result.$resolved = false;
 
       // Se crea una transaccion
       thiz.transaction(modelName, 'readonly', function (tx) {
-        let store = tx.objectStore(modelName);
-        let rq = store.openCursor();
+        const store = tx.objectStore(modelName);
+        const rq = store.openCursor();
 
         rq.onsuccess = function() {
-          let cursor = rq.result;
+          const cursor = rq.result;
           
           // No more matching records.
           if (!cursor){
@@ -291,7 +293,7 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
           }
           
           // Obtener la instancia
-          let record = Model.getInstanceFromObject(cursor.value);
+          const record = Model.getInstanceFromObject(cursor.value.values);
           record.$isNew = false; // Inicar que no es un registro nuevo
 
           // Agregar al resultado
@@ -316,7 +318,7 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
       onSocketConnected: $socketConnectedDefered
     }).map(function (key) {
       defereds[key].promise.done(function (err) {
-        let text = $dbName+'.v'+($dbVersion||1)+': '+key;
+        const text = $dbName+'.v'+($dbVersion||1)+': '+key;
         if (err){
           $log.error(text, err);
         } else {

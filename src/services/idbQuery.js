@@ -7,7 +7,6 @@ export default function idbQuery ($log, idbUtils) { 'ngInject';
     idbUtils.validate(arguments, ['object', 'function', ['object', 'undefined']]);
 
     let $result = null;
-    let $remoteResult = [];
 
     // Funcion que devuelve ejecuta el query y devuelve el resultado.
     thiz.getResult = function (cb) {
