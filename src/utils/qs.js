@@ -91,6 +91,33 @@ export default function qs () { 'ngInject'
     return new qsClass(cb);
   };
 
+  qsClass.all = function (arr) {
+    const defered = qsClass.defer();
+
+    let promises = keys.length;
+    const keys = Object.keys(arr);
+    const results = arr.length? [] : {};
+
+    keys.map(function (idx) {
+
+      arr[idx].then(function (result) {
+        promises--;
+        results[idx] = result;
+        if (!promises){
+          defered.resolve(results);
+        }
+      });
+
+      arr[idx].catch(function (err) {
+        defered.reject(err);
+      });
+      
+    });
+
+    return defered;
+
+  };
+
   return qsClass;
 
 }

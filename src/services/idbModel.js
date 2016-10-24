@@ -1,7 +1,7 @@
 'use strict';
 
 // Funcion para el servicio de la BD
-export default function idbModelService ($log, qs, idbUtils, lbResource, $timeout, idbEvents) { 'ngInject';
+export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents, lbResource, $timeout) { 'ngInject';
 
   // Buscar un campo
   const searchDeepField = function (obj, field, cb) {
@@ -21,6 +21,21 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
   };
 
+  // Obtiene el valor pa una propieda de un objeto
+  const getFieldValue = function (obj, field) {
+    return searchDeepField(obj, field, function (obj, lastField) {
+      return obj[lastField];
+    });
+  };
+
+  // Obtiene el valor pa una propieda de un objeto
+  const setFieldValue = function (obj, field, value) {
+    searchDeepField(obj, field, function (obj, lastField) {
+      obj[lastField] = value;
+    });
+    return obj;
+  };
+
   return function idbModel ($db, $modelName, $socket) {
     idbUtils.validate(arguments, [null ,'string']);
 
@@ -36,9 +51,12 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     function Model(data) { const thiz = this;
       idbUtils.validate(arguments, [['object', 'undefined']]);
 
-      thiz.$loaded = false;
       thiz.$resolved = false;
 
+      thiz.$loaded = false;
+      thiz.$localLoaded = false;
+      thiz.$remoteLoaded = false;
+      
       thiz.$localValues = {};
       thiz.$remoteValues = {};
 
@@ -174,31 +192,9 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
     };
 
-    // Devuelve la instancia del $remote del modelo
-    Model.getVersioning = function () {
-
-      return $versioning;
-
-    };
-
-    // Obtiene el valor pa una propieda de un objeto
-    Model.getFieldValue = function (obj, field) {
-      return searchDeepField(obj, field, function (obj, lastField) {
-        return obj[lastField];
-      });
-    };
-
-    // Obtiene el valor pa una propieda de un objeto
-    Model.setFieldValue = function (obj, field, value) {
-      searchDeepField(obj, field, function (obj, lastField) {
-        obj[lastField] = value;
-      });
-      return obj;
-    };
-
     // Devuelve el valor correspondiente al key de un objeto
     Model.getKeyFrom = function (data) {
-      return Model.getFieldValue(data, $id.keyPath);
+      return getFieldValue(data, $id.keyPath);
     };
 
     // Devuelve la instancia del model de las guardadas. Si no existe entonce
@@ -223,14 +219,40 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     // Busca un registro en la objectStore del modelo.
     Model.get = function (key) {
 
-      return $db.get(Model, key);
+      const defered = qs.defer();
+      const instance = Model.getInstance(key);
+      
+      if (instance.$localLoaded) return instance;
+
+      instance.$resolved = false;
+      instance.$promise = defered.promise;
+
+      $db.get($modelName, key).promise.then(function (data) {
+
+        Model.getVersionOf(key).promise
+          .then(function (version) {
+            instance.$setLocalValues(data, version? version.hash : undefined);
+            instance.$resolved = true;
+            defered.resolve(instance);
+          })
+          .catch(function (err) {
+            defered.reject(err);
+            $log.error(['Model.getVersionOf any error', err])
+          });
+
+      })
+      .catch(function (err) {
+        defered.reject(err);
+      });
+      
+      return instance;
 
     };
 
     // Buscar en el modelo
     Model.find = function (filters) {
 
-      return $db.query(Model, filters);
+      return new idbQuery($db, Model, filters);;
 
     };
 
@@ -246,7 +268,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
           throw new Error('Model.CantCreatedLoadedInstance');
         }
 
-        return record.$save();
+        return record.$pull();
 
       }
         
@@ -295,7 +317,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
         // Crear modelo para el manejo de datos
         $versioning = $db.model(modelName)
           .autoIncrement(false)
-          .keyPath('key')
+          .keyPath($id.keyPath)
           .fields({
             "hash": { "type": "string", "required": true },
           });
@@ -305,6 +327,27 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
       if (cb) cb($versioning);
 
       return Model;
+
+    };
+
+    // Devuelve la instancia de la version local del registro
+    Model.getVersionOf = function (key) { 
+
+      const defered = qs.defer();
+
+      if ($versioning) {
+        $versioning.get(key).$promise
+          .then(function (version) {
+            defered.resolve(version);
+          })
+          .catch(function () {
+            defered.reject(null);
+          });
+      } else {
+        defered.resolve(null);
+      }
+
+      return defered;
 
     };
 
@@ -339,23 +382,26 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     // Devuelve el valor de una propiedad
     Model.prototype.$get = function (field) {
 
-      return Model.getFieldValue(this, field);
+      return getFieldValue(this, field);
 
     };
 
     // Asigna in valor a un campo
     Model.prototype.$set = function (field, value) {
 
-      return Model.getFieldValue(this, field, value);
+      return getFieldValue(this, field, value);
 
     };
 
     // Devuelve un objeto con las propiedades del registro
-    Model.prototype.$getValues = function () { const thiz = this;
+    Model.prototype.$getValues = function (data) {
+      idbUtils.validate(arguments, [['object', 'undefined']]);
+
       const values = {};
+      data = data || this;
 
       Object.keys($fields).map(function (field) {
-        Model.setFieldValue(values, field, Model.getFieldValue(thiz, field));
+        setFieldValue(values, field, getFieldValue(data, field));
       });
 
       return values;
@@ -363,26 +409,16 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
     };
 
     // Devuelve un objeto con las propiedades locales del registro
-    Model.prototype.$getLocalValues = function () { const thiz = this;
-      const values = {};
+    Model.prototype.$getLocalValues = function () {
 
-      Object.keys($fields).map(function (field) {
-        Model.setFieldValue(values, field, Model.getFieldValue(thiz.$localValues, field));
-      });
-
-      return values;
+      return this.$getValues(this.$localValues);
 
     };
 
     // Devuelve un modelo con las propiedades remotas del registro
-    Model.prototype.$getRemoteValues = function () { const thiz = this;
-      const values = {};
+    Model.prototype.$getRemoteValues = function () {
 
-      Object.keys($fields).map(function (field) {
-        Model.setFieldValue(values, field, Model.getFieldValue(thiz.$remoteValues, field));
-      });
-
-      return values;
+      return this.$getValues(this.$remoteValues);
 
     };
 
@@ -393,7 +429,7 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
       thiz.$version = version;
 
       Object.keys(data).map(function (field) {
-        Model.setFieldValue(thiz, field, data[field]);
+        setFieldValue(thiz, field, data[field]);
       });
 
       thiz.$loaded = true;
@@ -404,15 +440,15 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
     // Asigna las propiedades locales del registro
     Model.prototype.$setLocalValues = function (data, version) { const thiz = this;
-      idbUtils.validate(arguments, ['object', ['string', 'undefined']]);
+      idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
       
       thiz.$localVersion = version;
 
-      Object.keys(data).map(function (field) {
-        Model.setFieldValue(thiz.$localValues, field, data[field]);
+      Object.keys(data || {}).map(function (field) {
+        setFieldValue(thiz.$localValues, field, data[field]);
       });
 
-      if (!thiz.$loaded) {
+      if (!thiz.$loaded && data) {
         thiz.$setValues(data, version);
       }
 
@@ -422,15 +458,15 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
     // Asigna las propiedades remotas del registro
     Model.prototype.$setRemoteValues = function (data, version) { const thiz = this;
-      idbUtils.validate(arguments, ['object', ['string', 'undefined']]);
+      idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
       
       thiz.$remoteVersion = version;
 
-      Object.keys(data).map(function (field) {
-        Model.setFieldValue(thiz.$remoteValues, field, data[field]);
+      Object.keys(data || {}).map(function (field) {
+        setFieldValue(thiz.$remoteValues, field, data[field]);
       });
 
-      if (!thiz.$loaded) {
+      if (!thiz.$loaded && data) {
         thiz.$setValues(data, version);
       }
 
@@ -483,34 +519,38 @@ export default function idbModelService ($log, qs, idbUtils, lbResource, $timeou
 
     };
 
-    // Devuelve la instancia de la version local del registro
-    Model.getVersionOf = function (key) { 
-
+    // Guarda los datos del objeto
+    Model.prototype.$pull = function (newValues, version){ const thiz = this;
+      idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
+      
       const defered = qs.defer();
 
-      if ($versioning) {
-        $versioning.get(key).$promise
-          .then(function (instance) {
-            defered.resolve(instance);
-          })
-          .catch(function () {
-            defered.reject(null);
-          });
+      if (newValues) {
+        newValues = thiz.$getValues(newValues);
       } else {
-        $timeout(function () {
-          defered.resolve(null);
-        });
+        newValues = thiz.$getRemoteValues();
       }
 
+      const newKey = Model.getKeyFrom(newValues);
+      const oldValues = thiz.$getLocalValues();
+      const oldKey = Model.getKeyFrom(oldValues);
+
+      console.log(newKey, oldKey);
+      console.log(newValues, oldValues);
+
+      // if (oldKey !== newKey) {
+
+      //   if (oldKey && newKey){
+      //     Model.get(oldKey).$promise.then(function (oldInstance) {
+      //       Model.get(newKey).$promise.then(function (newInstance) {
+
+      //       });
+      //     });
+      //   }
+
+      // }
+      
       return defered;
-
-    };
-
-    // Guarda los datos del objeto
-    Model.prototype.$save = function (){ const thiz = this;
-      idbUtils.validate(arguments, ['function', 'undefined']);
-
-      return $db.put($modelName, this);
 
     };
 
