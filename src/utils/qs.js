@@ -49,7 +49,7 @@ export default function qs () { 'ngInject'
       if (thiz.$resolved && !thiz.error) {
         thensResolved();
       }
-      return thiz;
+      return thiz.promise;
     };
 
     thiz.promise.catch = function (cb) {
@@ -57,7 +57,7 @@ export default function qs () { 'ngInject'
       if (thiz.$resolved && thiz.error) {
         catchsResolved();
       }
-      return thiz;
+      return thiz.promise;
     };
 
     thiz.promise.done = function (cb) {

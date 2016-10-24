@@ -2,33 +2,41 @@
 
 export default function idbUtils ($q) { 'ngInject'
   
-  // Funcion para determinar si es un callback válido o no
-  function isCallback (cb) {
+  const validators = {
+    // Funcion para determinar si es un callback válido o no
+    callback: function (value) {
+      return typeof value == 'function' || value == null || value == undefined;
+    },
 
-    return typeof cb == 'function' || cb == null || cb == undefined;
-
-  }
-
-  // Si el callback no es válido lanza un errpor
-  function mustBeCallback (cb) {
-    if (isCallback(cb)) return;
-
-    var err = new Error('Invalid callback');
-    err.name = 'InvalidCallback'
-
-    throw err;
-
-  }
+    // Verifica si un valor es un array
+    array: function (value) {
+      return Array.isArray(value);
+    }
+    
+  }  
 
   // Genera un error si el valor no es del tipo indicado por parametro
-  function mustBe (value, types) {
-    if (typeof types == 'string') types = [types];
-    for(var i in types){
-      if (typeof value == types[i]) return;
+  function valid (value, types) {
+    if (!validators.array(types)) types = [types];
+
+    for(let i in types){
+      const type = types[i];
+      if (typeof type == 'string'){
+        if (typeof validators[type] == 'function') {
+          if (validators[type](value)) {
+            return true;
+          }
+        } else if (typeof value == type) {
+          return true;
+        }
+      } else if (typeof type == 'function'){
+        if(type(args[i])){
+          return true;
+        }
+      }
     }
-    var err = new Error('Invalid value: '+value+' must be '+types.join(' or '));
-    err.name = 'InvalidValue'
-    throw err;
+
+    return false;
 
   }
 
@@ -37,33 +45,19 @@ export default function idbUtils ($q) { 'ngInject'
 
     args = Array.prototype.slice.call(args);
     if (typeof types == 'string') types = [types];
-    for (var i in args){
-      if (types[i]){
-        if (types[i] == null){
-          continue;
-        }
-        if (typeof types[i] == 'string' || typeof types[i] == 'object'){
-          mustBe(args[i], types[i]);
-          continue;
-        }
-        if (typeof types[i] == 'function'){
-          if(types[i](args[i]))
-            continue;
-        }
-
-        var err = new Error('Invalid validator to: '+args[i]+' must be '+types[i]);
+    for (let i in args){
+      const value = args[i];
+      const type = types[i];
+      if (type && !valid(value, type)){
+        let err = new Error('Invalid validator to: '+args[i]+' must be '+type);
         err.name = 'InvalidValidator'
         throw err;
-
       }
     }
 
   }
 
   return {
-    isCallback: isCallback,
-    mustBeCallback: mustBeCallback,
-    mustBe: mustBe,
     validate: validate,
   };
 

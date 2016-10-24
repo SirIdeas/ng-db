@@ -1,7 +1,7 @@
 'use strict';
 
 // Funcion para el servicio de la BD
-export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idbQuery, idbSocket, lbAuth) { 'ngInject';
+export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idbQuery, idbSocket, lbAuth, $timeout) { 'ngInject';
 
   // En la siguiente linea, puede incluir prefijos de implementacion que quiera probar.
   const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -113,13 +113,13 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
         // Asignar el manejador de errores
           // Do something with rq.errorCode!
         rq.onerror = function (event) {
-          $openDefered.reject(rq.errorCode);
+          $openDefered.reject(rq.errorCode, event);
         }
 
       };
 
-      // indexedDB.deleteDatabase($dbName).onsuccess = ready;
-      ready();
+      indexedDB.deleteDatabase($dbName).onsuccess = ready;
+      // ready();
 
       return $openDefered;
 
@@ -127,7 +127,7 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
 
     // Agrega un nuevo modelo
     thiz.model = function (name, socket) {
-      idbUtils.validate(arguments, ['string']);
+      idbUtils.validate(arguments, ['string', ['undefined', 'object']]);
 
       // Instanciar el modelo
       let model = thiz.models[name];
@@ -174,10 +174,10 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     };
 
     // Crea una transacción
-    thiz.transaction = function(modelName, perms, action, cb) {
-      idbUtils.validate(arguments, ['string', 'string', 'function', ['function', 'undefined']]);
+    thiz.transaction = function(modelName, perms, action) {
+      idbUtils.validate(arguments, ['string', 'string', 'function']);
 
-      const defered = qs.defer(cb);
+      const defered = qs.defer();
 
       // Cuando se abra la BD
       $openDefered.promise.then(function (event, rq) {
@@ -201,47 +201,42 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     };
 
     // Inserta un registro en el modelo
-    thiz.put = function (modelName, instance, cb) {
-      idbUtils.validate(arguments, ['string', ['object', 'function'], ['function', 'undefined']]);
+    thiz.put = function (modelName, instance) {
+      idbUtils.validate(arguments, ['string', ['object', 'function']]);
 
-      const defered = qs.defer(cb);
+      const defered = qs.defer();
 
       // Se crea una transaccion
       thiz.transaction(modelName, 'readwrite', function (tx) {
-        const rq = tx.objectStore(modelName).put({
-          values: instance.values(),
-        });
+        const rq = tx.objectStore(modelName).put(instance.$getValues());
 
         // Transaccion completada satisfatoriamente
         rq.onsuccess  = function (event) {
-          defered.resolve(event, instance);
+          // Asignar el generado al modelo
+          instance.$setKey(event.target.result);
+          defered.resolve(instance, event);
         };
 
         // Se generó un error en la transacción
-        rq.onerror  = function () {
+        rq.onerror  = function (event) {
           // Could call rq.preventDefault() to prevent the transaction from aborting.
-          defered.reject(rq);
+          defered.reject(event);
         };
 
       });
 
-      return defered.$promise;
+      return defered;
 
     };
 
     // Obtiene un elemento por si key
-    thiz.get = function (Model, key, cb) {
-      idbUtils.validate(arguments, ['function', 'string', null, ['function', 'undefined']]);
-      
-      const data = {};
-      Model.searchDeepField({}, Model.getKeyPath(), function (obj, lastField) {
-        obj[lastField] = key;
-      });
+    thiz.get = function (Model, key) {
+      idbUtils.validate(arguments, ['function', ['string', 'number']]);
 
+      const defered = qs.defer();
+      const instance = Model.getInstance(key);
       const modelName = Model.getModelName();
-      const defered = qs.defer(cb);
-      const instance = Model.getInstance(key, data);
-
+      
       instance.$promise = defered.promise;
       instance.$resolved = false;
 
@@ -249,16 +244,21 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
         const store = tx.objectStore(modelName);
         const rq = store.get(key);
 
-        rq.onsuccess = function() {
-          if (rq.result != undefined){
-            instance.setAttributes(rq.result, true);
-            instance.$isNew = false;
-          }
-          instance.$resolved = true;
-          defered.resolve(instance);
+        rq.onsuccess = function(event) {
+          Model.getVersionOf(key).promise
+            .then(function (version) {
+              if (rq.result != undefined){
+                instance.$setLocalValues(rq.result, version? version.hash : null);
+              }
+              instance.$resolved = true;
+              defered.resolve(instance);
+            })
+            .catch(function (err) {
+              $log.error(['any error', err])
+            });
         };
 
-        rq.onerror = function () {
+        rq.onerror = function (event) {
           defered.reject(instance);
         };
 
@@ -269,10 +269,10 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
     };
 
     // Buscar en el modelo
-    thiz.find = function (Model, filters, cb) {
-      idbUtils.validate(arguments, ['function', ['object', 'undefined'], ['function', 'undefined']]);
+    thiz.find = function (Model, filters) {
+      idbUtils.validate(arguments, ['function', ['object', 'undefined']]);
       const modelName = Model.getModelName();
-      const defered = qs.defer(cb);
+      const defered = qs.defer();
       const result = [];
 
       result.$promise = defered.promise;
@@ -291,16 +291,33 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel, idb
             result.$resolved = true;
             return defered.resolve(result);
           }
+
+          const key = Model.getKeyFrom(cursor.value);
+
+          Model.getVersionOf(key).promise
+
+            .then(function (version) {
+
+              // Obtener la instancia
+              const instance = Model.getInstance(key);
+
+              instance.$setLocalValues(cursor.value, version? version.hash : null);
+              instance.$resolved = true;
+              instance.$emit(idbEvents.MODEL_QUERIED, result);
+
+              // Agregar al resultado
+              result.push(instance);
+
+              // Buscar siguiente
+              cursor.continue();
+
+            })
+            
+            .catch(function (err) {
+              $log.error(['any error', err])
+            });
+
           
-          // Obtener la instancia
-          const record = Model.getInstanceFromObject(cursor.value.values);
-          record.$isNew = false; // Inicar que no es un registro nuevo
-
-          // Agregar al resultado
-          result.push(record);
-
-          // Buscar siguiente
-          cursor.continue();
 
         };
 
