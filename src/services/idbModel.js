@@ -76,19 +76,20 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
         thiz.$listen();
       }
 
-      const $queries = [];
+      const $results = [];
 
       thiz
+        
         // Cuando sea consultado agregar la consulta
-        .$bind(idbEvents.MODEL_QUERIED, function (query) {
-          $queries.push(query);
+        .$bind(idbEvents.MODEL_QUERIED, function (result) {
+          $results.push(result);
         })
 
         // Cuando sea liberado de la consultar quitar de las consultas
-        .$bind(idbEvents.MODEL_UNQUERIED, function (query) {
-          const idx = $queries.indexOf(query);
+        .$bind(idbEvents.MODEL_UNQUERIED, function (result) {
+          const idx = $results.indexOf(result);
           if (idx != -1){
-            $queries.splice(idx, 1);
+            $results.splice(idx, 1);
           }
         })
 
@@ -101,13 +102,6 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     Model.getModelName = function () {
 
       return $modelName;
-
-    };
-
-    // Devuelv el nombre del modelo
-    Model.getKeyPath = function () {
-
-      return $id.keyPath;
 
     };
 
@@ -219,24 +213,25 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     // Busca un registro en la objectStore del modelo.
     Model.get = function (key) {
 
-      const defered = qs.defer();
       const instance = Model.getInstance(key);
-      
-      if (instance.$localLoaded) return instance;
 
+      if (instance.$localLoaded) return instance;
+      
+      const defered = qs.defer();
+      
       instance.$resolved = false;
       instance.$promise = defered.promise;
 
       $db.get($modelName, key).promise.then(function (data) {
+        instance.$resolved = true;
 
         Model.getVersionOf(key).promise
           .then(function (version) {
-            instance.$setLocalValues(data, version? version.hash : undefined);
-            instance.$resolved = true;
+            instance.$setLocalValues(data, data && version? version.hash : undefined);
             defered.resolve(instance);
           })
           .catch(function (err) {
-            defered.reject(err);
+            defered.resolve(instance);
             $log.error(['Model.getVersionOf any error', err])
           });
 
@@ -448,9 +443,13 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
         setFieldValue(thiz.$localValues, field, data[field]);
       });
 
-      if (!thiz.$loaded && data) {
-        thiz.$setValues(data, version);
+      if (data) {
+        thiz.$localLoaded = true;
+        if (!thiz.$loaded) {
+          thiz.$setValues(data, version);
+        }
       }
+
 
       return thiz;
 
@@ -466,8 +465,11 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
         setFieldValue(thiz.$remoteValues, field, data[field]);
       });
 
-      if (!thiz.$loaded && data) {
-        thiz.$setValues(data, version);
+      if (data) {
+        thiz.$remoteLoaded = true;
+        if (!thiz.$loaded) {
+          thiz.$setValues(data, version);
+        }
       }
 
       return thiz;
@@ -512,13 +514,6 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     Model.prototype.$constructor = function (data) {
     };
 
-    // Devuelve si el objeto está almacenado
-    Model.prototype.$isStored = function () {
-
-      return $instances[this.$get($id.keyPath)] === this;
-
-    };
-
     // Guarda los datos del objeto
     Model.prototype.$pull = function (newValues, version){ const thiz = this;
       idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
@@ -538,18 +533,6 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
       console.log(newKey, oldKey);
       console.log(newValues, oldValues);
 
-      // if (oldKey !== newKey) {
-
-      //   if (oldKey && newKey){
-      //     Model.get(oldKey).$promise.then(function (oldInstance) {
-      //       Model.get(newKey).$promise.then(function (newInstance) {
-
-      //       });
-      //     });
-      //   }
-
-      // }
-      
       return defered;
 
     };
@@ -563,7 +546,7 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
       $socket.subscribe({
         modelName: $modelName,
         eventName: 'update',
-        modelId: thiz.$get(Model.getKeyPath()),
+        modelId: thiz.$get($id.keyPath),
       }, function (data) {
 
         // A recibir datos del socket asignar los valores

@@ -27,12 +27,14 @@ export default function idbQuery ($log, qs, idbUtils, idbEvents) { 'ngInject';
           // Obtener la instancia
           const instance = $Model.getInstance(key);
 
+          if (instance.$localLoaded) return next();
+
           $Model.getVersionOf(key).promise
             .then(function (version) {
 
-              instance.$setLocalValues(data, version? version.hash : undefined);
+              instance.$setLocalValues(data, data && version? version.hash : undefined);
               instance.$resolved = true;
-              instance.$emit(idbEvents.MODEL_QUERIED, thiz);
+              instance.$emit(idbEvents.MODEL_QUERIED, [$result]);
 
               // Agregar al resultado
               $result.push(instance);
@@ -72,6 +74,7 @@ export default function idbQuery ($log, qs, idbUtils, idbEvents) { 'ngInject';
 
     // Obtiene el resultado de valores remotos
     thiz.getRemoteResult = function () {
+
       idbUtils.validate(arguments, [['function', 'undefined']]);
 
       let $remote = $Model.getRemote();
@@ -81,22 +84,20 @@ export default function idbQuery ($log, qs, idbUtils, idbEvents) { 'ngInject';
         ($remoteResult = $remote.find($filters).$promise)
           .then(function (result) {
             result.map(function (record, i) {
-
               $Model.get($Model.getKeyFrom(record.values)).$promise
                 .then(function ($record) {
-
                   $record.$setRemoteValues(record.values, record.version);
 
                   if ($result[i]) {
                     if ($result[i] !== $record) {
-                      $result[i].$emit(idbEvents.MODEL_UNQUERIED, [thiz]);
+                      $result[i].$emit(idbEvents.MODEL_UNQUERIED, [$result]);
                     }
                     $result[i] = $record;
                   } else {
                     $result.push($record);
                   }
 
-                  $record.$emit(idbEvents.MODEL_QUERIED, [thiz]);
+                  $record.$emit(idbEvents.MODEL_QUERIED, [$result]);
                   
                 });
             });
