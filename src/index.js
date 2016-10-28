@@ -4,17 +4,17 @@ import idbUtils from './utils/idbUtils';
 import idbEvents from './utils/idbEvents';
 import qs from './utils/qs';
 
+import idbSocket from './services/idbSocket';
 import idb from './services/idb';
 import idbModel from './services/idbModel';
 import idbQuery from './services/idbQuery';
-import idbSocket from './services/idbSocket';
 
 import lb from './services/lb';
 
-lb(angular.module('ng.idb', []))
-  .constant('io', io)
+import './v1/index';
+
+lb(angular.module('ng.idb', ['ng.v1.idb']))
   
-  .constant('idbVersion', '0.0.1')
   .service('idbEvents', idbEvents)
   .service('idbUtils', idbUtils)
   .service('qs', qs)
