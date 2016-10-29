@@ -28,8 +28,8 @@ export default function (Clazzer) { 'ngInject';
   // $_promise
 
   const ReadyState = new Clazzer({})
-        .static('pending', 'pending')
-        .static('done',  'done');
+        .static('PENDIGN',  'pending')
+        .static('DONE',     'done');
   
   return new
   // ---------------------------------------------------------------------------

@@ -47,7 +47,33 @@ lb(angular.module('ng.v1.idb', []))
           .setAutoIncrement(false)
           .createStore();
 
-          console.log(['model', model.$id]);
+          model.put({
+            'id' : 1,
+            'nombres': 'alex',
+            'apellidos': 'rondon',
+          })
+
+          .then(function () {
+            console.log('put', arguments)
+          })
+
+          .catch(function () {
+            console.log('put error', arguments)
+          });
+
+          model.put({
+            'id' : 1,
+            'nombres': 'alex',
+            'apellidos': 'rondon',
+          })
+
+          .then(function () {
+            console.log('put', arguments)
+          })
+
+          .catch(function () {
+            console.log('put error', arguments)
+          })
 
         return 
           // .keyPath('id')

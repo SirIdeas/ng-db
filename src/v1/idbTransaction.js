@@ -32,9 +32,9 @@ export default function (Clazzer, idbStore) { 'ngInject';
   // $_promise
   
   const TransactionMode = new Clazzer({})
-        .static('readonly', 'readonly')
-        .static('readwrite', 'readwrite')
-        .static('versionchange',  'versionchange');
+        .static('READONLY', 'readonly')
+        .static('READWRITE', 'readwrite')
+        .static('VERSIONCHANGE',  'versionchange');
 
   return new
   // ---------------------------------------------------------------------------

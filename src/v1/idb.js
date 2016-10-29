@@ -55,12 +55,13 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   
   // ---------------------------------------------------------------------------
   // Constructor  
-  const idb = function idb(name, version) {
+  const idb = function idb(name, version, socket) {
 
     new Clazzer(this)
 
       .static('$name', name)
       .static('$version', version)
+      .static('$socket', socket)
       
       .static('$upgradeneededs', [])
       .static('$models', []);
@@ -105,13 +106,6 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   .static('cmp', function (first, second) {
     
     return indexedDB.cmp(first, second);
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('transaction', function (storeNames, mode) {
-    
-    throw 'idb.transaction'
 
   })
 
@@ -174,7 +168,7 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
           lastRq = null;
           thiz.$opened = null;
           if (cbErr) cbErr(thiz, lastRq, event);
-          reject.apply(null, [event]);
+          return thiz;
         });
 
     } else if (cb) {
@@ -231,6 +225,52 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
 
     // Instanciar el modelo y guardarlo
     return this.$models[name] = idbModel2(this, name);
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('transaction', function (storeNames, mode) { const thiz = this;
+    
+    return new Promise(function (resolve, reject) {
+      thiz.open()
+        .then(function (thiz) {
+          resolve(new idbTransaction(thiz.$me.transaction(storeNames, mode)));
+        })
+        .catch(function (event) {
+          reject(event);
+        });
+    });
+
+  })
+  
+  // ---------------------------------------------------------------------------
+  .method('store', function (storeNames) { const thiz = this;
+    if (!Array.isArray(storeNames)) storeNames = [storeNames];
+
+    function action(mode) {
+      return function (cb) {
+        return new Promise(function (resolve, reject) {
+
+          thiz.transaction(storeNames, mode)
+            .then(function (tx) {
+              const stores = storeNames.map(function (storeName) {
+                return tx.store(storeName);
+              });
+              if (cb) cb.apply(thiz, stores);
+              resolve(stores);
+            })
+            .catch(function (event) {
+              reject(event)
+            });
+
+        });
+      };
+    }
+
+    return new Clazzer({})
+      .static('readonly', action(idbTransaction.TransactionMode.READONLY))
+      .static('readwrite', action(idbTransaction.TransactionMode.READWRITE))
+      .clazz
 
   })
   
