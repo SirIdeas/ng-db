@@ -33,7 +33,7 @@
  *   boolean                             autoIncrement = false;
  * };me
  */
-export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTransaction, $log) { 'ngInject';
+export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDBRequest, idbTransaction, $log) { 'ngInject';
   
   // En la siguiente linea, puede incluir prefijos de implementacion que quiera probar.
   const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -70,13 +70,13 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   Clazzer(idb)
 
   // ---------------------------------------------------------------------------
-  // Propiedades
-  .property('$_upgradeneededs', { value:[] });
-  .property('$_models', { value: {} });
+  // Herencia
+  .inherit(idbEventTarget)
 
   // ---------------------------------------------------------------------------
-  // Herencia
-  .inherit(EventTarget)
+  // Propiedades
+  .property('$_upgradeneededs', { value:[] })
+  .property('$_models', { value: {} })
 
   // ---------------------------------------------------------------------------
   // Getters
@@ -263,7 +263,7 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
                 return storesObj[storeName] = tx.$store(storeName);
               });
               if (cb) cb.apply(thiz, stores);
-              resolve(stores);
+              resolve(storesObj);
             })
             .catch(function (event) {
               reject(event)
@@ -274,8 +274,8 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
     }
 
     return new Clazzer({})
-      .static('$readonly', action(idbTransaction.TransactionMode.ReadOnly))
-      .static('$readwrite', action(idbTransaction.TransactionMode.ReadWrite))
+      .static('$reader', action(idbTransaction.TransactionMode.ReadOnly))
+      .static('$writer', action(idbTransaction.TransactionMode.ReadWrite))
       .clazz
 
   })

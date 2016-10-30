@@ -11,7 +11,6 @@ export default function (Clazzer) { 'ngInject';
   // ---------------------------------------------------------------------------
   // Constructor
   Clazzer(function idbBase (me) {
-    console.log('idbBase', arguments)
 
     new Clazzer(this).static('$me', me);
 

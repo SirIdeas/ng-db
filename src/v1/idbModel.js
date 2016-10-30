@@ -5,7 +5,7 @@
  * -----------------------------------------------------------------------------
  * 
  */
-export default function (Clazzer, lbResource, $timeout, idbEventTarget) { 'ngInject';
+export default function (Clazzer, idbEventTarget, lbResource, $timeout) { 'ngInject';
 
 // -----------------------------------------------------------------------------
 // Buscar un campo
@@ -73,27 +73,19 @@ return function idbModelFactory (db, name, socket) {
   .static('$socket', socket)
 
   .static('$id', { keyPath: 'id', autoIncrement: true })
-  .static('$fields', {})
+  .static('$fields', {
+    id: {
+      id: true,
+      name: 'id',
+      type: 'number'
+    }
+  })
   .static('$instances', {})
     
   // ---------------------------------------------------------------------------
   .static('$getKeyFrom', function (data) {
+
     return getFieldValue(data, this.$id.keyPath);
-  })
-
-  // ---------------------------------------------------------------------------
-  .static('$setKeyPath', function (keyPath) {
-
-    this.$id.keyPath = keyPath;
-    return this;
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .static('$setAutoIncrement', function (autoIncrement) {
-
-    this.$id.autoIncrement = autoIncrement;
-    return this;
 
   })
 
@@ -109,14 +101,116 @@ return function idbModelFactory (db, name, socket) {
   })
 
   // ---------------------------------------------------------------------------
-  .static('$put', function (obj, key) { const thiz = this;
+  .static('$writer', function (cb) { const thiz = this;
 
-    return thiz.$db.$store(thiz.$name).$readwrite()
+    return thiz.$db.$store(thiz.$name).$writer(cb)
       .then(function (stores) {
-        return stores[thiz.$name].put(obj, key).$promise;
-      });
+        return stores[thiz.$name]
+      })
 
   })
+
+  // ---------------------------------------------------------------------------
+  .static('$reader', function (cb) { const thiz = this;
+
+    return thiz.$db.$store(thiz.$name).$reader(cb)
+      .then(function (stores) {
+        return stores[thiz.$name]
+      })
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$put', function (obj, key) { const thiz = this;
+    
+    const data = this.$getValues(obj);
+
+    return thiz.$writer().then(function (store) {
+      return store.$put(data, key).$promise
+        .then(function (event) {
+          const record = thiz.$getInstance(event.target.result);
+          record.$setLocalValues(data);
+          return record;
+        });
+    });
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$add', function (obj, key) { const thiz = this;
+    
+    const data = this.$getValues(obj);
+
+    return thiz.$writer().then(function (store) {
+      return store.$add(data, key).$promise
+        .then(function (event) {
+          const record = thiz.$getInstance(event.target.result);
+          record.$setLocalValues(data);
+          return record;
+        });
+    });
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$delete', function (query) {
+    
+    throw 'idbModel.static.$delete';
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$clear', function () {
+    
+    throw 'idbModel.static.$clear';
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$get', function (key) { const thiz = this;
+
+    const record = this.$getInstance(key);
+
+    record.$promise = thiz.$reader().then(function (store) {
+      return store.$get(key).$promise
+        .then(function (event) {
+          record.$setLocalValues(event.target.result);
+          return record;
+        });
+    });
+
+    return record;
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$getKey', function (query) {
+    
+    throw 'idbModel.static.$getKey';
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$getAll', function (query, count) {
+    
+    throw 'idbModel.static.$getAll';
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$getAllKeys', function (query, count) {
+    
+    throw 'idbModel.static.$getAllKeys';
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$count', function (query) {
+    
+    throw 'idbModel.static.$count';
+
+  })
+
 
   // ---------------------------------------------------------------------------
   .static('$getInstance', function (key) {
@@ -154,12 +248,48 @@ return function idbModelFactory (db, name, socket) {
 
   // ---------------------------------------------------------------------------
   // Agrega el el campo ID automaticamente
-  .static('$idInject', function () {
+  .static('$key', function (key, autoIncrement, type) {
+    if(typeof key === 'boolean') {
+      autoIncrement = key;
+    }
+    if (key === undefined || key === null || typeof key === 'boolean'){
+      key = 'id';
+    }
+    if(typeof autoIncrement === 'string') {
+      type = autoIncrement;
+      autoIncrement = null;
+    }
+    if (autoIncrement === undefined || autoIncrement === null){
+      autoIncrement = true;
+    }
+    if(typeof autoIncrement === 'boolean' || type !== 'string') {
+      type = 'number';
+    }
 
-    this.field('name', {
+    this.$id.keyPath = key;
+    this.$id.autoIncrement = autoIncrement;
+
+    return this.$field(key, {
       id: true,
-      type: 'number'
+      type: type,
     });
+
+  })
+
+  // ---------------------------------------------------------------------------
+  // Devuelve el valor de una propiedad
+  .static('$getValues', function (data) {
+      
+    const values = {};
+
+    Object.keys(this.$fields).map(function (field) {
+      const value = getFieldValue(data, field);
+      if (value !== undefined){
+        setFieldValue(values, field, value);
+      }
+    });
+
+    return values;
 
   })
 
@@ -188,7 +318,7 @@ return function idbModelFactory (db, name, socket) {
     .static('remote', {})
     .clazz
   })
-  
+
   .property('$_versions', { value: {} })
   
   // ---------------------------------------------------------------------------
@@ -210,15 +340,8 @@ return function idbModelFactory (db, name, socket) {
   // ---------------------------------------------------------------------------
   // Devuelve el valor de una propiedad
   .method('$getValues', function (data) {
-      
-    const values = {};
-    data = data || this;
 
-    Object.keys(idbModel.$fields).map(function (field) {
-      setFieldValue(values, field, getFieldValue(data, field));
-    });
-
-    return values;
+    return idbModel.$getValues(data || this);
 
   })
 

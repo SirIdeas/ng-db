@@ -41,8 +41,6 @@ lb(angular.module('ng.v1.idb', []))
       1: function (db) {
         var model = db
           .$model('Trabajador')
-          .$setKeyPath('id')
-          .$setAutoIncrement(false)
           .$createStore();
       }
     })
@@ -59,8 +57,6 @@ lb(angular.module('ng.v1.idb', []))
 
   .service('Trabajador2', function (db2) { 'ngInject';
     return window.Trabajador2 = db2.$model('Trabajador')
-      .$setKeyPath('id')
-      .$setAutoIncrement(false)
       .$field('cod',        { "type": "string", "required": true })
       .$field('ci',         { "type": "string", "required": true })
       .$field('nombres',    { "type": "string", "required": true })
@@ -97,14 +93,38 @@ lb(angular.module('ng.v1.idb', []))
     console.log(t.$getValues());
     console.log(t.getNombre());
 
-    Trabajador2.put({
+    Trabajador2.$put({
+      id: 1,
       'nombres': 'Alexander'
-    })
-    .then(function () {
-      console.log(['then', arguments])
-    })
-    .catch(function () {
-      console.log(['catch', arguments])
     });
+
+    Trabajador2.$put({
+      id: 2,
+      'nombres': 'Guillemo'
+    });
+
+    Trabajador2.$put({
+      id: 2,
+      'apellidos': 'Seminario'
+    });
+
+    Trabajador2.$put({
+      id: 4,
+      'nombres': 'Axel'
+    });
+
+    Trabajador2.$put({
+      'nombres': 'Gabriel'
+    });
+
+    window.r = Trabajador2.$get(2);
+
+    r.$promise
+    .then(function (record) {
+      console.log(['then', record])
+    })
+    .catch(function (event) {
+      console.error(event)
+    })
 
   });

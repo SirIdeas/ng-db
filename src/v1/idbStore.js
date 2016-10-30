@@ -132,14 +132,14 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$index', function (name) {
 
-    throw 'idbStore.prototype.index';
+    throw 'idbStore.method.$index';
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$createIndex', function (name, keyPath, options) {
 
-    throw 'idbStore.prototype.createIndex';
+    throw 'idbStore.method.$createIndex';
 
   })
 
