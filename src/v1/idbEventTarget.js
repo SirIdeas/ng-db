@@ -13,27 +13,25 @@ export default function (Clazzer) { 'ngInject';
   Clazzer(function idbEventTarget () {})
   
   // ---------------------------------------------------------------------------
-  // propiedad
-  .property('$listeners', {
-    value: []
-  })
+  // Propiedades
+  .property('$_listeners', { value: [] })
   
   // ---------------------------------------------------------------------------
   // method
   .method('$bind', function (type, callback) {
-    if(!(type in this.$listeners)) {
-      this.$listeners[type] = [];
+    if(!(type in this.$_listeners)) {
+      this.$_listeners[type] = [];
     }
-    this.$listeners[type].push(callback);
+    this.$_listeners[type].push(callback);
   })
   
   // ---------------------------------------------------------------------------
   // method
   .method('$unbind ', function (type, callback) {
-    if(!(type in this.$listeners)) {
+    if(!(type in this.$_listeners)) {
       return;
     }
-    var stack = this.$listeners[type];
+    var stack = this.$_listeners[type];
     for(var i = 0, l = stack.length; i < l; i++) {
       if(stack[i] === callback){
         stack.splice(i, 1);
@@ -45,10 +43,10 @@ export default function (Clazzer) { 'ngInject';
   // ---------------------------------------------------------------------------
   // method
   .method('$emit', function (event) {
-    if(!(event.type in this.$listeners)) {
+    if(!(event.type in this.$_listeners)) {
       return;
     }
-    var stack = this.$listeners[event.type];
+    var stack = this.$_listeners[event.type];
     for(var i = 0, l = stack.length; i < l; i++) {
         stack[i].call(this, event);
     }

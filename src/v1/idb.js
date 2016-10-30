@@ -58,13 +58,9 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   const idb = function idb(name, version, socket) {
 
     new Clazzer(this)
-
       .static('$name', name)
       .static('$version', version)
-      .static('$socket', socket)
-      
-      .static('$upgradeneededs', [])
-      .static('$models', []);
+      .static('$socket', socket);
 
   };
 
@@ -72,6 +68,11 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   // ---------------------------------------------------------------------------
   // Constructor
   Clazzer(idb)
+
+  // ---------------------------------------------------------------------------
+  // Propiedades
+  .property('$_upgradeneededs', { value:[] });
+  .property('$_models', { value: {} });
 
   // ---------------------------------------------------------------------------
   // Herencia
@@ -112,7 +113,7 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   // ---------------------------------------------------------------------------
   .method('$upgradeneeded', function (cb) {
     
-    this.$upgradeneededs.push(cb);
+    this.$_upgradeneededs.push(cb);
     return this;
 
   })
@@ -152,7 +153,7 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
       thiz.$opened = (lastRq = idb.$open(thiz.$name, thiz.$version)
         .$upgradeneeded(function (event) {
           thiz.$me = event.target.result;
-          thiz.$upgradeneededs.map(function (cb) {
+          thiz.$_upgradeneededs.map(function (cb) {
             cb.apply(thiz, [thiz, lastRq, event]);
           });
         }))
@@ -225,10 +226,10 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   .method('$model', function (name, socket) {
 
     // Si existe el modelo retornarlo
-    if(this.$models[name]) return this.$models[name];
+    if(this.$_models[name]) return this.$_models[name];
 
     // Instanciar el modelo y guardarlo
-    return this.$models[name] = idbModel2(this, name, socket || this.$socket);
+    return this.$_models[name] = idbModel2(this, name, socket || this.$socket);
 
   })
 

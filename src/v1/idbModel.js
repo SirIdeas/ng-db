@@ -52,7 +52,7 @@ return function idbModelFactory (db, name, socket) {
   // ---------------------------------------------------------------------------
   function idbModel() {
   }
-  
+
   return new
   // ---------------------------------------------------------------------------
   // Constructor
@@ -122,14 +122,14 @@ return function idbModelFactory (db, name, socket) {
   .static('$getInstance', function (key) {
 
     // El objeto no tiene ID
-    if (!key) {
+    if (key === undefined || key === null) {
       return new this();
     }
 
     // No existe la instancia entonce se crea
     if (!this.$instances[key]){
-      this.$instances[key] = new Model();
-      this.$instances[key]
+      this.$instances[key] = new this();
+      this.$instances[key].$set(this.$id.keyPath, key);
     }
     
     return this.$instances[key];
@@ -182,6 +182,16 @@ return function idbModelFactory (db, name, socket) {
   })
 
   // ---------------------------------------------------------------------------
+  // Propiedades
+  .property('$_values', { value: new Clazzer({})
+    .static('local', {})
+    .static('remote', {})
+    .clazz
+  })
+  
+  .property('$_versions', { value: {} })
+  
+  // ---------------------------------------------------------------------------
   // Devuelve el valor de una propiedad
   .method('$get', function (field) {
 
@@ -213,9 +223,56 @@ return function idbModelFactory (db, name, socket) {
   })
 
   // ---------------------------------------------------------------------------
+  .method('$getLocalValues', function () {
+
+    return this.$getValues(this.$_values.local);
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('$getRemoteValues', function () {
+
+    return this.$getValues(this.$_values.remote);
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('$setValues', function (data) { const thiz = this;
+
+    Object.keys(data || {}).map(function (field) {
+      setFieldValue(thiz, field, data[field]);
+    });
+
+    return thiz;
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('$setLocalValues', function (data) { const thiz = this;
+
+    Object.keys(data || {}).map(function (field) {
+      setFieldValue(thiz.$_values.local, field, data[field]);
+    });
+
+    return thiz;
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('$setRemoteValues', function (data) { const thiz = this;
+
+    Object.keys(data || {}).map(function (field) {
+      setFieldValue(thiz.$_values.remote, field, data[field]);
+    });
+
+    return thiz;
+
+  })
+
+  // ---------------------------------------------------------------------------
   .method('$key', function (data) {
 
-    return this.$get(idbModel.$id.keyPath);
+    return getFieldValue(data, this.$id.keyPath);
 
   })
 

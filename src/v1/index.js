@@ -38,20 +38,20 @@ lb(angular.module('ng.v1.idb', []))
     const db = new idb2('aaa', 4)
 
     db.$automigration({
-        1: function (db) {
-          var model = db
-            .$model('Trabajador')
-            .$setKeyPath('id')
-            .$setAutoIncrement(false)
-            .$createStore();
-        }
-      })
+      1: function (db) {
+        var model = db
+          .$model('Trabajador')
+          .$setKeyPath('id')
+          .$setAutoIncrement(false)
+          .$createStore();
+      }
+    })
 
-      .$drop().then(function (db) {
-        db.$open().then(function (event) {
-          console.log(['opened']);
-        });
+    .$drop().then(function (db) {
+      db.$open().then(function (event) {
+        console.log(['opened']);
       });
+    });
 
     return db;
     
@@ -90,10 +90,21 @@ lb(angular.module('ng.v1.idb', []))
       });
   })
 
-  .run(function (Trabajador2) { 'ngInject';
+  .run(function (db2, Trabajador2) { 'ngInject';
     const t = new Trabajador2();
     t.nombres = 'Alexander';
     t.apellidos = 'Rondon';
     console.log(t.$getValues());
     console.log(t.getNombre());
+
+    Trabajador2.put({
+      'nombres': 'Alexander'
+    })
+    .then(function () {
+      console.log(['then', arguments])
+    })
+    .catch(function () {
+      console.log(['catch', arguments])
+    });
+
   });

@@ -13,9 +13,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
     new Clazzer(this)
       .static('$url', url || idbSocket.$defUrlServer)
       .static('$accessTokenId', accessTokenId || idbSocket.$defAccessTokenId)
-      .static('$currentUserId', currentUserId || idbSocket.$defCurrentUserId)
-      
-      .static('$listeners', []);
+      .static('$currentUserId', currentUserId || idbSocket.$defCurrentUserId);
 
     thiz.$connect();
 
@@ -25,6 +23,9 @@ export default function (Clazzer, io, $log) { 'ngInject';
   // ---------------------------------------------------------------------------
   // Constructor
   Clazzer(idbSocket)
+
+  // ---------------------------------------------------------------------------
+  .property('$_listeners', { value:[] })
 
   // ---------------------------------------------------------------------------
   // Conectarse al servidor
@@ -71,7 +72,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$pushListener', function (name, cb) {
 
-    this.$listeners.push(name);
+    this.$_listeners.push(name);
 
   })
 
@@ -79,9 +80,9 @@ export default function (Clazzer, io, $log) { 'ngInject';
   .method('$unsubscribe',function (subscriptionName) {
 
     this.$socket.removeAllListeners(subscriptionName);  
-    var idx = this.$listeners.indexOf(subscriptionName);
+    var idx = this.$_listeners.indexOf(subscriptionName);
     if (idx != -1){
-      this.$listeners.splice(idx, 1);
+      this.$_listeners.splice(idx, 1);
     }
 
   })
