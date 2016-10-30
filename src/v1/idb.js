@@ -192,7 +192,7 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
         .$success(function (event) {
           resolve(thiz)
         })
-        .$fail(function (event) {
+        .$failed(function (event) {
           reject(event);
         });
       if (cb) cb(rq);
@@ -236,15 +236,10 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
   // ---------------------------------------------------------------------------
   .method('$transaction', function (storeNames, mode) { const thiz = this;
     
-    return new Promise(function (resolve, reject) {
-      thiz.$open()
-        .then(function (thiz) {
-          resolve(new idbTransaction(thiz.$me.transaction(storeNames, mode)));
-        })
-        .catch(function (event) {
-          reject(event);
-        });
-    });
+    return thiz.$open()
+      .then(function (thiz) {
+        return new idbTransaction(thiz.$me.transaction(storeNames, mode));
+      });
 
   })
   
@@ -254,22 +249,17 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
 
     function action(mode) {
       return function (cb) {
-        return new Promise(function (resolve, reject) {
-
-          thiz.$transaction(storeNames, mode)
-            .then(function (tx) {
-              const storesObj = {};
-              const stores = storeNames.map(function (storeName) {
-                return storesObj[storeName] = tx.$store(storeName);
-              });
-              if (cb) cb.apply(thiz, stores);
-              resolve(storesObj);
-            })
-            .catch(function (event) {
-              reject(event)
+        
+        return thiz.$transaction(storeNames, mode)
+          .then(function (tx) {
+            const storesObj = {};
+            const stores = storeNames.map(function (storeName) {
+              return storesObj[storeName] = tx.$store(storeName);
             });
+            if (cb) cb.apply(thiz, stores);
+            return storesObj;
+          });
 
-        });
       };
     }
 

@@ -55,16 +55,16 @@ export default function (Clazzer, idbStore) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   // Getters
-  .getter('$db',                'db')
-  .getter('$mode',              'mode')
-  .getter('$error',             'error')
-  .getter('$objectStoreNames',  'objectStoreNames')
+  .getter('$db',          'db')
+  .getter('$mode',        'mode')
+  .getter('$error',       'error')
+  .getter('$storeNames',  'objectStoreNames')
 
   // ---------------------------------------------------------------------------
   // Event handlers
-  .handlerEvent('$aborted', 'onabort')
+  .handlerEvent('$aborted',   'onabort')
   .handlerEvent('$completed', 'oncomplete')
-  .handlerEvent('$fail', 'onerror')
+  .handlerEvent('$failed',    'onerror')
 
   // ---------------------------------------------------------------------------
   .method('$store', function(name){
@@ -92,7 +92,7 @@ export default function (Clazzer, idbStore) { 'ngInject';
         thiz.$completed(function (event) {
           resolve(event);
         })
-        .$fail(function (event) {
+        .$failed(function (event) {
           reject(event);
         });
       });

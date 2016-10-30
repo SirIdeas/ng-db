@@ -59,7 +59,7 @@ export default function (Clazzer) { 'ngInject';
   // ---------------------------------------------------------------------------
   // Event handlers
   .handlerEvent('$success', 'onsuccess')
-  .handlerEvent('$fail', 'onerror')
+  .handlerEvent('$failed',  'onerror')
 
   // ---------------------------------------------------------------------------
   // Property
@@ -73,7 +73,7 @@ export default function (Clazzer) { 'ngInject';
         thiz.$success(function (event) {
           resolve(event);
         })
-        .$fail(function (event) {
+        .$failed(function (event) {
           reject(event);
         });
       });
