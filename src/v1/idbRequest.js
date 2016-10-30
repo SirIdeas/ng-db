@@ -28,8 +28,8 @@ export default function (Clazzer) { 'ngInject';
   // $_promise
 
   const ReadyState = new Clazzer({})
-        .static('PENDIGN',  'pending')
-        .static('DONE',     'done');
+        .static('Pending',  'pending')
+        .static('Done',     'done');
   
   return new
   // ---------------------------------------------------------------------------
@@ -58,8 +58,8 @@ export default function (Clazzer) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   // Event handlers
-  .handlerEvent('success', 'onsuccess')
-  .handlerEvent('error', 'onerror')
+  .handlerEvent('$success', 'onsuccess')
+  .handlerEvent('$fail', 'onerror')
 
   // ---------------------------------------------------------------------------
   // Property
@@ -70,10 +70,10 @@ export default function (Clazzer) { 'ngInject';
 
       // Crear promise para el request
       thiz.$_promise = new Promise(function (resolve, reject) {
-        thiz.success(function (event) {
+        thiz.$success(function (event) {
           resolve(event);
         })
-        .error(function (event) {
+        .$fail(function (event) {
           reject(event);
         });
       });

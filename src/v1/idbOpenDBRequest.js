@@ -26,8 +26,8 @@ export default function (Clazzer, idbRequest) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   // Event handlers
-  .handlerEvent('blocked', 'onblocked')
-  .handlerEvent('upgradeneeded', 'onupgradeneeded')
+  .handlerEvent('$blocked', 'onblocked')
+  .handlerEvent('$upgradeneeded', 'onupgradeneeded')
   
   // ---------------------------------------------------------------------------
   .clazz;

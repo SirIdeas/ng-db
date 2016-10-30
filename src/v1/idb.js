@@ -83,34 +83,34 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
 
   // ---------------------------------------------------------------------------
   // Event handlers
-  .handlerEvent('aborted', 'onabort')
-  .handlerEvent('closed', 'onclose')
-  .handlerEvent('error', 'onerror')
-  .handlerEvent('versionChanged', 'onversionchange')
+  .handlerEvent('$aborted', 'onabort')
+  .handlerEvent('$closed', 'onclose')
+  .handlerEvent('$error', 'onerror')
+  .handlerEvent('$versionChanged', 'onversionchange')
 
   // ---------------------------------------------------------------------------
-  .static('open', function (name, version) {
+  .static('$open', function (name, version) {
 
     return new idbOpenDBRequest(indexedDB.open(name, version));
 
   })
 
   // ---------------------------------------------------------------------------
-  .static('drop', function (name) {
+  .static('$drop', function (name) {
     
     return new idbOpenDBRequest(indexedDB.deleteDatabase(name));
 
   })
 
   // ---------------------------------------------------------------------------
-  .static('cmp', function (first, second) {
+  .static('$cmp', function (first, second) {
     
     return indexedDB.cmp(first, second);
 
   })
 
   // ---------------------------------------------------------------------------
-  .method('upgradeneeded', function (cb) {
+  .method('$upgradeneeded', function (cb) {
     
     this.$upgradeneededs.push(cb);
     return this;
@@ -118,9 +118,9 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   })
 
   // ---------------------------------------------------------------------------
-  .method('automigration', function (allMigrations) {
+  .method('$automigration', function (allMigrations) {
 
-    return this.upgradeneeded(function (thiz, openRequest, event) {
+    return this.$upgradeneeded(function (thiz, openRequest, event) {
       Object.keys(allMigrations).map(function (version) {
 
         if (event.oldVersion < version && version <= event.newVersion) {
@@ -142,15 +142,15 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   })
 
   // ---------------------------------------------------------------------------
-  .method('open', function (cb, cbErr) { const thiz = this;
+  .method('$open', function (cb, cbErr) { const thiz = this;
 
     let lastRq = null;
     let lastEvent = null;
 
     if (!thiz.$opened) {
 
-      thiz.$opened = (lastRq = idb.open(thiz.$name, thiz.$version)
-        .upgradeneeded(function (event) {
+      thiz.$opened = (lastRq = idb.$open(thiz.$name, thiz.$version)
+        .$upgradeneeded(function (event) {
           thiz.$me = event.target.result;
           thiz.$upgradeneededs.map(function (cb) {
             cb.apply(thiz, [thiz, lastRq, event]);
@@ -182,14 +182,18 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   })
 
   // ---------------------------------------------------------------------------
-  .method('drop', function (cb) { const thiz = this;
+  .method('$drop', function (cb) { const thiz = this;
     thiz.$opened = null;
 
     return new Promise(function (resolve, reject) {
 
-      const rq = idb.drop(thiz.$name)
-        .success(resolve)
-        .error(reject);
+      const rq = idb.$drop(thiz.$name)
+        .$success(function (event) {
+          resolve(thiz)
+        })
+        .$fail(function (event) {
+          reject(event);
+        });
       if (cb) cb(rq);
 
     });
@@ -197,42 +201,42 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   })
 
   // ---------------------------------------------------------------------------
-  .method('close', function () {
+  .method('$close', function () {
 
     this.$me.close();
     
   })
 
   // ---------------------------------------------------------------------------
-  .method('createStore', function (name, options) {
+  .method('$createStore', function (name, options) {
 
     return new idbStore(this.$me.createObjectStore(name, options));
     
   })
 
   // ---------------------------------------------------------------------------
-  .method('dropStore', function (name) {
+  .method('$dropStore', function (name) {
 
     this.$me.deleteObjectStore(name);
 
   })
 
   // ---------------------------------------------------------------------------
-  .method('model', function (name) {
+  .method('$model', function (name, socket) {
 
     // Si existe el modelo retornarlo
     if(this.$models[name]) return this.$models[name];
 
     // Instanciar el modelo y guardarlo
-    return this.$models[name] = idbModel2(this, name);
+    return this.$models[name] = idbModel2(this, name, socket || this.$socket);
 
   })
 
   // ---------------------------------------------------------------------------
-  .method('transaction', function (storeNames, mode) { const thiz = this;
+  .method('$transaction', function (storeNames, mode) { const thiz = this;
     
     return new Promise(function (resolve, reject) {
-      thiz.open()
+      thiz.$open()
         .then(function (thiz) {
           resolve(new idbTransaction(thiz.$me.transaction(storeNames, mode)));
         })
@@ -244,17 +248,18 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
   })
   
   // ---------------------------------------------------------------------------
-  .method('store', function (storeNames) { const thiz = this;
+  .method('$store', function (storeNames) { const thiz = this;
     if (!Array.isArray(storeNames)) storeNames = [storeNames];
 
     function action(mode) {
       return function (cb) {
         return new Promise(function (resolve, reject) {
 
-          thiz.transaction(storeNames, mode)
+          thiz.$transaction(storeNames, mode)
             .then(function (tx) {
+              const storesObj = {};
               const stores = storeNames.map(function (storeName) {
-                return tx.store(storeName);
+                return storesObj[storeName] = tx.$store(storeName);
               });
               if (cb) cb.apply(thiz, stores);
               resolve(stores);
@@ -268,8 +273,8 @@ export default function (Clazzer, idbStore, idbModel2, idbOpenDBRequest, idbTran
     }
 
     return new Clazzer({})
-      .static('readonly', action(idbTransaction.TransactionMode.READONLY))
-      .static('readwrite', action(idbTransaction.TransactionMode.READWRITE))
+      .static('$readonly', action(idbTransaction.TransactionMode.ReadOnly))
+      .static('$readwrite', action(idbTransaction.TransactionMode.ReadWrite))
       .clazz
 
   })

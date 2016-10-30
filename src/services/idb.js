@@ -4,17 +4,17 @@
 export default function idbService ($log, qs, idbUtils, idbEvents, idbModel) { 'ngInject';
 
   // En la siguiente linea, puede incluir prefijos de implementacion que quiera probar.
-  const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-  // No use "const indexedDB = ..." Si no está en una función.
-  // Por otra parte, puedes necesitar referencias a algun objeto window.IDB*:
-  const IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
-  const IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
-  // (Mozilla nunca ha prefijado estos objetos, por lo tanto no necesitamos window.mozIDB*)
-  
-  if (!indexedDB) {
-    alert("Su navegador no soporta una versión estable de indexedDB. Tal y como las características no serán validas");
-    return;
-  }
+    const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    // No use "const indexedDB = ..." Si no está en una función.
+    // Por otra parte, puedes necesitar referencias a algun objeto window.IDB*:
+    const IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
+    const IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
+    // (Mozilla nunca ha prefijado estos objetos, por lo tanto no necesitamos window.mozIDB*)
+    
+    if (!indexedDB) {
+      alert("Su navegador no soporta una versión estable de indexedDB. Tal y como las características no serán validas");
+      return;
+    }
 
   // Clase para la creación de instancias de la BD
   function idb($dbName, $dbVersion, $socket) { const thiz = this;
@@ -32,50 +32,50 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel) { '
     thiz.models = {};
 
     // Agregar un manejador de evento
-    thiz.bind = function (eventName, cb) {
-      idbUtils.validate(arguments, ['string', 'function']);
+      thiz.bind = function (eventName, cb) {
+        idbUtils.validate(arguments, ['string', 'function']);
 
-      if (!$eventsCallbacks[eventName]){
-        $eventsCallbacks[eventName] = [];
-      }
+        if (!$eventsCallbacks[eventName]){
+          $eventsCallbacks[eventName] = [];
+        }
 
-      $eventsCallbacks[eventName].push(cb);
+        $eventsCallbacks[eventName].push(cb);
 
-    };
+      };
 
     //Remueve un manejador de evento
-    thiz.unbind = function (eventName, cb) {
-      idbUtils.validate(arguments, ['string', 'function']);
+      thiz.unbind = function (eventName, cb) {
+        idbUtils.validate(arguments, ['string', 'function']);
 
-      if (!$eventsCallbacks[eventName]) return;
+        if (!$eventsCallbacks[eventName]) return;
 
-      // Buscar el cb
-      const idx = $eventsCallbacks[eventName].indexOf(cb);
+        // Buscar el cb
+        const idx = $eventsCallbacks[eventName].indexOf(cb);
 
-      // Si se encontro el cb removerlo
-      if (idx != -1){
-        $eventsCallbacks[eventName].splice(idx, 1);
-      }
+        // Si se encontro el cb removerlo
+        if (idx != -1){
+          $eventsCallbacks[eventName].splice(idx, 1);
+        }
 
-    };
+      };
 
     // Dispara un evento
-    thiz.trigger = function (eventName, args) {
-      idbUtils.validate(arguments, ['string', 'object']);
+      thiz.trigger = function (eventName, args) {
+        idbUtils.validate(arguments, ['string', 'object']);
 
-      $log.log($dbName+'.v'+($dbVersion||1)+': '+eventName);
+        $log.log($dbName+'.v'+($dbVersion||1)+': '+eventName);
 
-      for(let i in $eventsCallbacks[eventName]){
-        $eventsCallbacks[eventName][i].apply(thiz, args);
-      }
+        for(let i in $eventsCallbacks[eventName]){
+          $eventsCallbacks[eventName][i].apply(thiz, args);
+        }
 
-    };
+      };
 
     // Callbacks para los errores
-    thiz.error = function (cb) {
-      thiz.bind(idbEvents.DB_ERROR, cb);
-      return thiz;
-    };
+      thiz.error = function (cb) {
+        thiz.bind(idbEvents.DB_ERROR, cb);
+        return thiz;
+      };
 
     // Abrir una Base de datos.
     thiz.open = function () {
@@ -126,34 +126,34 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel) { '
     };
 
     // Agrega un nuevo modelo
-    thiz.model = function (name, socket) {
-      idbUtils.validate(arguments, ['string', ['undefined', 'object']]);
+      thiz.model = function (name, socket) {
+        idbUtils.validate(arguments, ['string', ['undefined', 'object']]);
 
-      // Instanciar el modelo
-      let model = thiz.models[name];
+        // Instanciar el modelo
+        let model = thiz.models[name];
 
-      // Si no existe el modelo crear
-      if(!model){
-        model = idbModel(thiz, name, socket || $socket);
-      }
+        // Si no existe el modelo crear
+        if(!model){
+          model = idbModel(thiz, name, socket || $socket);
+        }
 
-      // Guardar el modelo en los modelos
-      thiz.models[name] = model;
+        // Guardar el modelo en los modelos
+        thiz.models[name] = model;
 
-      // Retornar el modelo
-      return model;
+        // Retornar el modelo
+        return model;
 
-    };
+      };
 
     // Crea el objectStore para un model
-    thiz.createStore = function (modelName, modelId) {
-      idbUtils.validate(arguments, ['string', ['object', 'undefined']]);
+      thiz.createStore = function (modelName, modelId) {
+        idbUtils.validate(arguments, ['string', ['object', 'undefined']]);
 
-      $upgradeNeededDefered.promise.then(function (event, rq) {
-        rq.result.createObjectStore(modelName, modelId);
-      });
+        $upgradeNeededDefered.promise.then(function (event, rq) {
+          rq.result.createObjectStore(modelName, modelId);
+        });
 
-    };
+      };
 
     // Crea el objectStore para un model
     thiz.createIndex = function (modelName, indexName, fieldName, opts) {
@@ -309,25 +309,25 @@ export default function idbService ($log, qs, idbUtils, idbEvents, idbModel) { '
 
     // Crear alias para los eventos enlazar callbacks a los eventos
     let defereds;
-    Object.keys(defereds = {
-      onOpen: $openDefered,
-      onUpgradeNeeded: $upgradeNeededDefered,
-      onSocketConnected: $socketConnectedDefered
-    }).map(function (key) {
-      defereds[key].promise.done(function (err) {
-        const text = $dbName+'.v'+($dbVersion||1)+': '+key;
-        if (err){
-          $log.error(text, err);
-        } else {
-          $log.log(text);
-        }
+      Object.keys(defereds = {
+        onOpen: $openDefered,
+        onUpgradeNeeded: $upgradeNeededDefered,
+        onSocketConnected: $socketConnectedDefered
+      }).map(function (key) {
+        defereds[key].promise.done(function (err) {
+          const text = $dbName+'.v'+($dbVersion||1)+': '+key;
+          if (err){
+            $log.error(text, err);
+          } else {
+            $log.log(text);
+          }
+        });
+        thiz[key] = function (cb) {
+          idbUtils.validate(arguments, ['function']);
+          defereds[key].promise.done(cb);
+          return thiz;
+        };
       });
-      thiz[key] = function (cb) {
-        idbUtils.validate(arguments, ['function']);
-        defereds[key].promise.done(cb);
-        return thiz;
-      };
-    });
 
   };
 

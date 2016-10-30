@@ -10,6 +10,7 @@ import idbOpenDBRequest   from './idbOpenDBRequest';
 // Principales
 import idb              from './idb';
 import idbStore         from './idbStore';
+import idbEventTarget   from './idbEventTarget';
 import idbModel         from './idbModel';
 import idbSocket        from './idbSocket';
 import idbTransaction   from './idbTransaction';
@@ -27,75 +28,72 @@ lb(angular.module('ng.v1.idb', []))
   .service('idbOpenDBRequest', idbOpenDBRequest)
   .service('idb2', idb)
   .service('idbStore', idbStore)
+  .service('idbEventTarget', idbEventTarget)
   .service('idbModel2', idbModel)
   .service('idbSocket2', idbSocket)
   .service('idbTransaction', idbTransaction)
 
   .service('db2', function (idb2) { 'ngInject';
 
-    const db = new idb2('aaa', 4);
+    const db = new idb2('aaa', 4)
 
-    db.upgradeneeded(function (db, event) {
-      console.log(['upgradeneeded', event])
-    })
+    db.$automigration({
+        1: function (db) {
+          var model = db
+            .$model('Trabajador')
+            .$setKeyPath('id')
+            .$setAutoIncrement(false)
+            .$createStore();
+        }
+      })
 
-    .automigration({
-      1: function (db) {
-        var model = db
-          .model('Trabajador')
-          .setKeyPath('id')
-          .setAutoIncrement(false)
-          .createStore();
-
-          model.put({
-            'id' : 1,
-            'nombres': 'alex',
-            'apellidos': 'rondon',
-          })
-
-          .then(function () {
-            console.log('put', arguments)
-          })
-
-          .catch(function () {
-            console.log('put error', arguments)
-          });
-
-          model.put({
-            'id' : 1,
-            'nombres': 'alex',
-            'apellidos': 'rondon',
-          })
-
-          .then(function () {
-            console.log('put', arguments)
-          })
-
-          .catch(function () {
-            console.log('put error', arguments)
-          })
-
-        return 
-          // .keyPath('id')
-          // .autoIncrement(false)
-          // .create()
-          // .versioning(function (versioning) {
-          //   versioning.createStore();
-          // });
-      }
-    });
-
-    db.drop().then(function () {
-      console.log(['drop', event]);
-      db.open().then(function () {
-        console.log(['open', event]);
+      .$drop().then(function (db) {
+        db.$open().then(function (event) {
+          console.log(['opened']);
+        });
       });
-    });
 
     return db;
     
   })
 
-  .run(function (db2) { 'ngInject';
+  .service('Trabajador2', function (db2) { 'ngInject';
+    return window.Trabajador2 = db2.$model('Trabajador')
+      .$setKeyPath('id')
+      .$setAutoIncrement(false)
+      .$field('cod',        { "type": "string", "required": true })
+      .$field('ci',         { "type": "string", "required": true })
+      .$field('nombres',    { "type": "string", "required": true })
+      .$field('apellidos',  { "type": "string", "required": true })
+      .$field('nacimiento', { "type": "date" })
+      .$field('ingreso',    { "type": "date" })
+      .$field('direccion',  { "type": "string"})
+      .$remote(
+        '/trabajadores/:id',
+        { 'id': '@id' },
+        {
+          'find':   { url: '/trabajadores/_findWithVersion', method: 'GET', isArray: true, },
+          // 'create': { url: '/trabajadores', method: 'POST', },
+        }
+      )
+      // .versioning()
+      .$build(function (Trabajador) {
 
+        Trabajador.prototype.$constructor = function (data) {
+
+        };
+
+        Trabajador.prototype.getNombre = function (){
+          return this.nombres + ' ' + this.apellidos;
+        };
+
+      });
+  })
+
+  .run(function (Trabajador2) { 'ngInject';
+    const t = new Trabajador2();
+    t.nombres = 'Alexander';
+    t.apellidos = 'Rondon';
+    console.log(t.$getValues());
+    console.log(t.getNombre());
   });

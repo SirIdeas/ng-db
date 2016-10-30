@@ -32,9 +32,9 @@ export default function (Clazzer, idbStore) { 'ngInject';
   // $_promise
   
   const TransactionMode = new Clazzer({})
-        .static('READONLY', 'readonly')
-        .static('READWRITE', 'readwrite')
-        .static('VERSIONCHANGE',  'versionchange');
+        .static('ReadOnly', 'readonly')
+        .static('ReadWrite', 'readwrite')
+        .static('VersionChange',  'versionchange');
 
   return new
   // ---------------------------------------------------------------------------
@@ -62,19 +62,19 @@ export default function (Clazzer, idbStore) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   // Event handlers
-  .handlerEvent('aborted', 'onabort')
-  .handlerEvent('completed', 'oncomplete')
-  .handlerEvent('error', 'onerror')
+  .handlerEvent('$aborted', 'onabort')
+  .handlerEvent('$completed', 'oncomplete')
+  .handlerEvent('$fail', 'onerror')
 
   // ---------------------------------------------------------------------------
-  .method('store', function(name){
+  .method('$store', function(name){
 
     return new idbStore(this.$me.objectStore(name));
 
   })
 
   // ---------------------------------------------------------------------------
-  .method('abort', function(){
+  .method('$abort', function(){
 
     this.$me.abort();
 
@@ -89,10 +89,10 @@ export default function (Clazzer, idbStore) { 'ngInject';
 
       // Crear promise para el request
       thiz.$_promise = new Promise(function (resolve, reject) {
-        thiz.completed(function (event) {
+        thiz.$completed(function (event) {
           resolve(event);
         })
-        .error(function (event) {
+        .$fail(function (event) {
           reject(event);
         });
       });

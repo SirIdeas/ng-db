@@ -17,7 +17,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
       
       .static('$listeners', []);
 
-    thiz.connect();
+    thiz.$connect();
 
   };
 
@@ -28,7 +28,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   // Conectarse al servidor
-  .method('connect', function () {
+  .method('$connect', function () {
 
     // Creating connection with server
     const socket = this.$socket = io.connect($url);
@@ -39,8 +39,8 @@ export default function (Clazzer, io, $log) { 'ngInject';
       $log.log('connected');
 
       socket.emit('authentication', {
-        id: $accessTokenId,
-        userId: $currentUserId,
+        id: this.$accessTokenId,
+        userId: this.$currentUserId,
       });
       
       socket.on('authenticated', function() {
@@ -53,7 +53,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
   })
 
   // ---------------------------------------------------------------------------
-  .method('subscribe', function (options, cb) {
+  .method('$subscribe', function (options, cb) {
 
     let name = options.modelName + '.' + options.eventName;
 
@@ -64,19 +64,19 @@ export default function (Clazzer, io, $log) { 'ngInject';
     this.$socket.on(name, cb);
     
     //Push the container..
-    this.$listeners.push(name, cb);
+    this.$pushListener(name, cb);
 
   })
 
   // ---------------------------------------------------------------------------
-  .method('pushListener', function (subscriptionName, cb) {
+  .method('$pushListener', function (name, cb) {
 
-    this.$listeners.push(subscriptionName);
+    this.$listeners.push(name);
 
   })
 
   // ---------------------------------------------------------------------------
-  .method('unsubscribe',function (subscriptionName) {
+  .method('$unsubscribe',function (subscriptionName) {
 
     this.$socket.removeAllListeners(subscriptionName);  
     var idx = this.$listeners.indexOf(subscriptionName);
@@ -88,7 +88,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   // Asigna la URL de servidor por defecto
-  .static('setUrlServer', function (url) {
+  .static('$setUrlServer', function (url) {
 
     this.$defUrlServer = url;
     return this;
@@ -97,7 +97,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   // ASigna las credenciales por defecto
-  .static('setCredentials', function (accessTokenId, currentUserId) {
+  .static('$setCredentials', function (accessTokenId, currentUserId) {
 
     this.$defAccessTokenId = accessTokenId;
     this.$defCurrentUserId = currentUserId;
@@ -109,7 +109,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
   .clazz
 
   // ---------------------------------------------------------------------------
-  .setUrlServer(null)
-  .setCredentials(null, null);
+  .$setUrlServer(null)
+  .$setCredentials(null, null);
 
 }
