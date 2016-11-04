@@ -5,7 +5,7 @@
  * -----------------------------------------------------------------------------
  * 
  */
-export default function (Clazzer, idbEventTarget, lbResource, $timeout) { 'ngInject';
+export default function (Clazzer, idbQuery, idbEventTarget, lbResource, $timeout) { 'ngInject';
 
 // -----------------------------------------------------------------------------
 // Buscar un campo
@@ -63,10 +63,6 @@ return function idbModelFactory (db, name, socket) {
   .inherit(idbEventTarget)
 
   // ---------------------------------------------------------------------------
-  // Herencia
-  // .inherit(EventTarget)
-
-  // ---------------------------------------------------------------------------
   // Propiedades staticas
   .static('$db', db)
   .static('$name', name)
@@ -80,6 +76,7 @@ return function idbModelFactory (db, name, socket) {
       type: 'number'
     }
   })
+  .static('$indexesToCreate', {})
   .static('$instances', {})
     
   // ---------------------------------------------------------------------------
@@ -88,13 +85,50 @@ return function idbModelFactory (db, name, socket) {
     return getFieldValue(data, this.$id.keyPath);
 
   })
+    
+  // ---------------------------------------------------------------------------
+  .static('$addIndex', function (fields, name, options) {
+    if (typeof fields == 'string') {
+      fields = [fields];
+    }
+    if (typeof name == 'object') {
+      options = name;
+      name = null;
+    }
+    if (!name) {
+      name = fields.sort().join('_');
+    }
+
+    this.$indexesToCreate[name] = {
+      fields: fields,
+      name: name,
+      options: options,
+    };
+
+    return this;
+
+  })
 
   // ---------------------------------------------------------------------------
-  .static('$createStore', function (cb) {
+  .static('$create', function (cb) { const thiz = this;
 
-    const store = this.$db.$createStore(this.$name, this.$id);
+    const store = thiz.$db.$createStore(thiz.$name, thiz.$id);
 
-    if (cb) cb(this, store);
+    Object.keys(thiz.$indexesToCreate).map(function (key) {
+      const index = thiz.$indexesToCreate[key];
+      store.$createIndex(index.fields, index.name, index.options);
+    });
+
+    if (cb) cb(thiz, store);
+
+    return thiz;
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .static('$drop', function (cb) {
+
+    this.$db.$dropStore(this.$name);
 
     return this;
 
@@ -126,12 +160,12 @@ return function idbModelFactory (db, name, socket) {
     const data = this.$getValues(obj);
 
     return thiz.$writer().then(function (store) {
-      return store.$put(data, key).$promise
-        .then(function (event) {
-          const record = thiz.$getInstance(event.target.result);
-          record.$setLocalValues(data);
-          return record;
-        });
+      return store.$put(data, key).then(function (key) {
+        const record = thiz.$getInstance(key);
+        record.$setValues(data);
+        record.$setLocalValues(data);
+        return record;
+      });
     });
 
   })
@@ -142,12 +176,12 @@ return function idbModelFactory (db, name, socket) {
     const data = this.$getValues(obj);
 
     return thiz.$writer().then(function (store) {
-      return store.$add(data, key).$promise
-        .then(function (event) {
-          const record = thiz.$getInstance(event.target.result);
-          record.$setLocalValues(data);
-          return record;
-        });
+      return store.$add(data, key).then(function (key) {
+        const record = thiz.$getInstance(key);
+        record.$setValues(data);
+        record.$setLocalValues(data);
+        return record;
+      });
     });
 
   })
@@ -155,14 +189,18 @@ return function idbModelFactory (db, name, socket) {
   // ---------------------------------------------------------------------------
   .static('$delete', function (query) {
     
-    throw 'idbModel.static.$delete';
+    return this.$writer().then(function (store) {
+      return store.$delete(query);
+    });
 
   })
 
   // ---------------------------------------------------------------------------
   .static('$clear', function () {
     
-    throw 'idbModel.static.$clear';
+    return this.$writer().then(function (store) {
+      return store.$clear();
+    });
 
   })
 
@@ -172,11 +210,11 @@ return function idbModelFactory (db, name, socket) {
     const record = this.$getInstance(key);
 
     record.$promise = thiz.$reader().then(function (store) {
-      return store.$get(key).$promise
-        .then(function (event) {
-          record.$setLocalValues(event.target.result);
-          return record;
-        });
+      return store.$get(key).then(function (data) {
+        record.$setValues(data);
+        record.$setLocalValues(data);
+        return record;
+      });
     });
 
     return record;
@@ -184,34 +222,69 @@ return function idbModelFactory (db, name, socket) {
   })
 
   // ---------------------------------------------------------------------------
-  .static('$getKey', function (query) {
-    
-    throw 'idbModel.static.$getKey';
+  .static('$getKey', function (query) { const thiz = this;
 
+    return thiz.$reader().then(function (store) {
+      return store.$getKey(query);
+    });
+    
   })
 
   // ---------------------------------------------------------------------------
-  .static('$getAll', function (query, count) {
+  .static('$getAll', function (query, count) { const thiz = this;
     
-    throw 'idbModel.static.$getAll';
+    const result = [];
+
+    result.$promise = thiz.$reader().then(function (store) {
+      return store.$getAll(query, count).then(function (arr) {
+        return arr.map(function (data) {
+          const record = thiz.$getInstance(thiz.$getKeyFrom(data));
+          record.$setValues(data);
+          record.$setLocalValues(data);
+          result.push(record);
+          return record;
+        });
+      });
+    });
+
+    return result;
 
   })
 
   // ---------------------------------------------------------------------------
   .static('$getAllKeys', function (query, count) {
     
-    throw 'idbModel.static.$getAllKeys';
+    const result = [];
+
+    result.$promise = this.$reader().then(function (store) {
+      return store.$getAllKeys().then(function (arr) {
+        return arr.map(function (key) {
+          result.push(key);
+          return key;
+        });
+      });
+    });
+
+    return result;
 
   })
 
   // ---------------------------------------------------------------------------
   .static('$count', function (query) {
     
-    throw 'idbModel.static.$count';
+    return this.$reader().then(function (store) {
+      return store.$count(query);
+    });
 
   })
 
+  // ---------------------------------------------------------------------------
+  .static('$find', function (filters) {
+    
+    return new idbQuery(this, filters);
 
+  })
+  
   // ---------------------------------------------------------------------------
   .static('$getInstance', function (key) {
 

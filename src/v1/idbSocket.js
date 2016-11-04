@@ -6,23 +6,19 @@ export default function (Clazzer, io, $log) { 'ngInject';
   // Atributos falntantes por definir
   // $socket
 
+  return new
   // ---------------------------------------------------------------------------
   // Constructor
-  const idbSocket = function idbSocket(url, $accessTokenId, $currentUserId){
+  Clazzer(function idbSocket(url, accessTokenId, currentUserId){
 
     new Clazzer(this)
       .static('$url', url || idbSocket.$defUrlServer)
       .static('$accessTokenId', accessTokenId || idbSocket.$defAccessTokenId)
       .static('$currentUserId', currentUserId || idbSocket.$defCurrentUserId);
 
-    thiz.$connect();
+    this.$connect();
 
-  };
-
-  return new
-  // ---------------------------------------------------------------------------
-  // Constructor
-  Clazzer(idbSocket)
+  })
 
   // ---------------------------------------------------------------------------
   .property('$_listeners', { value:[] })
@@ -32,7 +28,7 @@ export default function (Clazzer, io, $log) { 'ngInject';
   .method('$connect', function () {
 
     // Creating connection with server
-    const socket = this.$socket = io.connect($url);
+    const socket = this.$socket = io.connect(this.$url);
 
     // This part is only for login users for authenticated $socket connection between client and server.
     // If you are not using login page in you website then you should remove rest piece of code..

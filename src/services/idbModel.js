@@ -247,7 +247,7 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     // Buscar en el modelo
     Model.find = function (filters) {
 
-      return new idbQuery($db, Model, filters);;
+      return new idbQuery($db, Model, filters);
 
     };
 

@@ -33,7 +33,7 @@
  *   boolean                             autoIncrement = false;
  * };me
  */
-export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDBRequest, idbTransaction, $log) { 'ngInject';
+export default function (Clazzer, idbEventTarget, idbStore, idbModel, idbOpenDBRequest, idbTransaction, $log) { 'ngInject';
   
   // En la siguiente linea, puede incluir prefijos de implementacion que quiera probar.
   const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -50,7 +50,7 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
   
   // ---------------------------------------------------------------------------
   // Atributos falntantes por definir
-  // $me
+  // $_me
   // $opened
   
   // ---------------------------------------------------------------------------
@@ -78,16 +78,21 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
   .property('$_upgradeneededs', { value:[] })
   .property('$_models', { value: {} })
 
+  .property('$me', {
+    get: function () {
+      return this.$_me;
+    },
+    set: function (me) {
+      this.$_me = me;
+      const e = new Event('opened');
+      // e.target = this;
+      this.$emit(e);
+    }
+  })
+
   // ---------------------------------------------------------------------------
   // Getters
   .getter('$objectStoreNames', 'objectStoreNames')
-
-  // ---------------------------------------------------------------------------
-  // Event handlers
-  .handlerEvent('$aborted', 'onabort')
-  .handlerEvent('$closed', 'onclose')
-  .handlerEvent('$error', 'onerror')
-  .handlerEvent('$versionChanged', 'onversionchange')
 
   // ---------------------------------------------------------------------------
   .static('$open', function (name, version) {
@@ -108,6 +113,35 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
     
     return indexedDB.cmp(first, second);
 
+  })
+
+  // ---------------------------------------------------------------------------
+  // Event handlers
+  .method('$aborted', function (cb) { const thiz = this;
+    return thiz.$bind('opened', function () {
+      thiz.$me.onabort = cb;
+    });
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('$closed', function (cb) { const thiz = this;
+    return thiz.$bind('opened', function () {
+      thiz.$me.onclose = cb;
+    });
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('$error', function (cb) { const thiz = this;
+    return thiz.$bind('opened', function () {
+      thiz.$me.onerror = cb;
+    });
+  })
+
+  // ---------------------------------------------------------------------------
+  .method('$versionChanged', function (cb) { const thiz = this;
+    return thiz.$bind('opened', function () {
+      thiz.$me.onversionchange = cb;
+    });
   })
 
   // ---------------------------------------------------------------------------
@@ -132,9 +166,8 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
           $log.log('migration v'+version+' starts');
           migrations.map(function (migration) {
             migration(thiz, openRequest, event);
-
           });
-          $log.log('migration v'+version+' ends');
+          
         }
 
       });
@@ -152,6 +185,7 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
 
       thiz.$opened = (lastRq = idb.$open(thiz.$name, thiz.$version)
         .$upgradeneeded(function (event) {
+          $log.log('upgradeneeded idb: '+thiz.$name+' v'+thiz.$version);
           thiz.$me = event.target.result;
           thiz.$_upgradeneededs.map(function (cb) {
             cb.apply(thiz, [thiz, lastRq, event]);
@@ -160,7 +194,10 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
 
       .$promise
         .then(function (event) {
-          thiz.$me = event.target.result;
+          $log.log('opened idb: '+thiz.$name+' v'+thiz.$version);
+          if (thiz.$me !== event.target.result){
+            thiz.$me = event.target.result;
+          }
           lastEvent = event;
           if (cb) cb(thiz, lastRq, event);
           return thiz;
@@ -204,7 +241,10 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
   // ---------------------------------------------------------------------------
   .method('$close', function () {
 
+    this.$opened = null;
     this.$me.close();
+
+    return this;
     
   })
 
@@ -220,6 +260,8 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
 
     this.$me.deleteObjectStore(name);
 
+    return this;
+
   })
 
   // ---------------------------------------------------------------------------
@@ -229,7 +271,7 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel2, idbOpenDB
     if(this.$_models[name]) return this.$_models[name];
 
     // Instanciar el modelo y guardarlo
-    return this.$_models[name] = idbModel2(this, name, socket || this.$socket);
+    return this.$_models[name] = idbModel(this, name, socket || this.$socket);
 
   })
 

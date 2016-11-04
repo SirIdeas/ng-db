@@ -7,17 +7,21 @@ import Clazzer  from './Clazzer';
 import idbRequest         from './idbRequest';
 import idbOpenDBRequest   from './idbOpenDBRequest';
 
+import idbConsultant   from './idbConsultant';
+
 // Principales
 import idb              from './idb';
 import idbStore         from './idbStore';
+import idbIndex         from './idbIndex';
 import idbEventTarget   from './idbEventTarget';
 import idbModel         from './idbModel';
-import idbSocket        from './idbSocket';
 import idbTransaction   from './idbTransaction';
+import idbQuery         from './idbQuery';
+import idbSocket        from './idbSocket';
 
 import lb from './lb';
 
-lb(angular.module('ng.v1.idb', []))
+lb(angular.module('ng.idb', []))
   
   .constant('io', io)
   .service('Clazzer', Clazzer)
@@ -26,37 +30,71 @@ lb(angular.module('ng.v1.idb', []))
   
   .service('idbRequest', idbRequest)
   .service('idbOpenDBRequest', idbOpenDBRequest)
-  .service('idb2', idb)
+  .service('idbConsultant', idbConsultant)
+  .service('idb', idb)
   .service('idbStore', idbStore)
+  .service('idbIndex', idbIndex)
   .service('idbEventTarget', idbEventTarget)
-  .service('idbModel2', idbModel)
-  .service('idbSocket2', idbSocket)
+  .service('idbModel', idbModel)
+  .service('idbSocket', idbSocket)
+  .service('idbQuery', idbQuery)
   .service('idbTransaction', idbTransaction)
 
-  .service('db2', function (idb2) { 'ngInject';
+  .service('socket', function(idbSocket, API_ROOT) { 'ngInject'
+  
+    return new idbSocket(
+      'http://localhost:3200/',
+      localStorage['$LoopBack$accessTokenId'],
+      localStorage['$LoopBack$currentUserId']
+    );
 
-    const db = new idb2('aaa', 4)
+  })
 
-    db.$automigration({
-      1: function (db) {
-        var model = db
-          .$model('Trabajador')
-          .$createStore();
-      }
-    })
+  .service('db', function (idb, socket) { 'ngInject';
 
-    .$drop().then(function (db) {
-      db.$open().then(function (event) {
-        console.log(['opened']);
+    const db = new idb('aaa', 4, socket)
+
+    db
+      .$bind('opened', function () { console.log(['$opened']); })
+      .$aborted(function () { console.log(['$aborted']); })
+      .$closed(function () { console.log(['$closed']); })
+      .$error(function () { console.log(['$error']); })
+      .$versionChanged(function () { console.log(['$versionChanged']); })
+
+      .$automigration({
+        1: function (db) {
+          db.$model('Trabajador')
+            .$create()
+        },
+        2: function (db) {
+          db.$model('Empleado')
+            
+            .$addIndex(['nombres', 'apellidos'])
+            .$addIndex('nacimiento')
+
+            .$create(function (model, store) {
+
+              store.$createIndex('ci');
+              store.$createIndex('cod');
+
+            })
+        },
+        3: function (db) {
+          db.$model('Trabajador')
+            .$drop()
+        }
+      })
+
+      .$drop().then(function (db) {
+        db.$open();
       });
-    });
 
     return db;
     
   })
 
-  .service('Trabajador2', function (db2) { 'ngInject';
-    return window.Trabajador2 = db2.$model('Trabajador')
+  .service('Empleado', function (db) { 'ngInject';
+    return window.Empleado = db.$model('Empleado')
       .$field('cod',        { "type": "string", "required": true })
       .$field('ci',         { "type": "string", "required": true })
       .$field('nombres',    { "type": "string", "required": true })
@@ -73,58 +111,102 @@ lb(angular.module('ng.v1.idb', []))
         }
       )
       // .versioning()
-      .$build(function (Trabajador) {
+      .$build(function (Empleado) {
 
-        Trabajador.prototype.$constructor = function (data) {
+        Empleado.prototype.$constructor = function (data) {
 
         };
 
-        Trabajador.prototype.getNombre = function (){
+        Empleado.prototype.getNombre = function (){
           return this.nombres + ' ' + this.apellidos;
         };
 
       });
   })
 
-  .run(function (db2, Trabajador2) { 'ngInject';
-    const t = new Trabajador2();
-    t.nombres = 'Alexander';
-    t.apellidos = 'Rondon';
-    console.log(t.$getValues());
-    console.log(t.getNombre());
+.run(function (db, Empleado) { 'ngInject';
 
-    Trabajador2.$put({
-      id: 1,
-      'nombres': 'Alexander'
-    });
-
-    Trabajador2.$put({
+  Empleado.$put({
+    id: 1,
+    'nombres': 'Alexander'
+  }).then(function (record) {
+    //
+    console.log(['put', record.nombres]);
+  }).then(function () {
+    return Empleado.$put({
       id: 2,
       'nombres': 'Guillemo'
+    }).then(function (record) {
+      console.log(['put', record.nombres]);
     });
-
-    Trabajador2.$put({
+  }).then(function () {
+    return Empleado.$put({
       id: 2,
       'apellidos': 'Seminario'
+    }).then(function (record) {
+      console.log(['put', record.nombres]);
     });
-
-    Trabajador2.$put({
+  }).then(function () {
+    return Empleado.$put({
       id: 4,
       'nombres': 'Axel'
+    }).then(function (record) {
+      console.log(['put', record.nombres]);
     });
-
-    Trabajador2.$put({
+  }).then(function () {
+    return Empleado.$put({
       'nombres': 'Gabriel'
+    }).then(function (record) {
+      console.log(['put', record.nombres]);
     });
-
-    window.r = Trabajador2.$get(2);
-
-    r.$promise
-    .then(function (record) {
-      console.log(['then', record])
-    })
-    .catch(function (event) {
-      console.error(event)
-    })
-
+  }).then(function () {
+    return Empleado.$add({
+      'nombres': 'Evert'
+    }).then(function (record) {
+      console.log(['put', record.nombres]);
+    });
+  }).then(function () {
+    const r = Empleado.$get(2);
+    console.log(['get', r])
+    return r.$promise;
+  }).then(function () {
+    const r = Empleado.$find().$getResult();
+    console.log(['find', r]);
+    return r.$promise;
+  }).then(function () {
+    const r = Empleado.$getAll();
+    console.log(['getAll', r]);
+    return r.$promise;
+  }).then(function () {
+    return Empleado.$count().then(function (count) {
+      console.log(['count', count]);
+    });
+  }).then(function () {
+    const r = Empleado.$getAllKeys();
+    console.log(['getAllKeys', r]);
+    return r.$promise;
+  }).then(function () {
+    return Empleado.$delete(2).then(function () {
+      console.log(['delete']);
+    });
+  }).then(function () {
+    return Empleado.$count().then(function (count) {
+      console.log(['count', count]);
+    });
+  }).then(function () {
+    return Empleado.$clear().then(function () {
+      console.log(['clear']);
+    });
+  }).then(function () {
+    return Empleado.$count().then(function (count) {
+      console.log(['count', count]);
+    });
+  }).then(function () {
+    db.$close();
+  }).then(function () {
+    db.$open().then(function () {
+      db.$close();
+    });
   });
+
+});

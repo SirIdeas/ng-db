@@ -15,13 +15,6 @@
  *   IDBRequest add(any value, optional any key);
  *   IDBRequest delete(any query);
  *   IDBRequest clear();
- *   IDBRequest get(any query);
- *   IDBRequest getKey(any query);
- *   IDBRequest getAll(optional any query, [EnforceRange] optional unsigned long count);
- *   IDBRequest getAllKeys(optional any query, [EnforceRange] optional unsigned long count);
- *   IDBRequest count(optional any query);
- *   IDBRequest openCursor(optional any query, optional IDBCursorDirection direction = "next");
- *   IDBRequest openKeyCursor(optional any query, optional IDBCursorDirection direction = "next");
  *   IDBIndex   index(DOMString name);
  *   IDBIndex   createIndex(DOMString name, (DOMString or sequence<DOMString>) keyPath, optional IDBIndexParameters options);
  *   void       deleteIndex(DOMString indexName);
@@ -33,7 +26,7 @@
  * };
  * 
  */
-export default function (Clazzer, idbRequest) { 'ngInject';
+export default function (Clazzer, idbRequest, idbIndex, idbConsultant, $log) { 'ngInject';
 
   return new
   // ---------------------------------------------------------------------------
@@ -45,8 +38,11 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   })
 
   // ---------------------------------------------------------------------------
+  // Herencia
+  .inherit(idbConsultant)
+
+  // ---------------------------------------------------------------------------
   // Getters
-  .getter('$name', 'name')
   .getter('$keyPath', 'keyPath')
   .getter('$indexNames', 'indexNames')
   .getter('$transaction', 'transaction')
@@ -55,97 +51,72 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$put', function (value, key) {
 
-    return new idbRequest(this.$me.put(value, key));
+    return new idbRequest(this.$me.put(value, key))
+      .$promise
+      .then(function (event) {
+        return event.target.result;
+      });
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$add', function (value, key) {
 
-    return new idbRequest(this.$me.add(value, key));
+    return new idbRequest(this.$me.add(value, key))
+      .$promise
+      .then(function (event) {
+        return event.target.result;
+      });
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$delete', function (query) {
 
-    return new idbRequest(this.$me.delete(query));
+    return new idbRequest(this.$me.delete(query))
+      .$promise
+      .then(function (event) {});
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$clear', function () {
 
-    return new idbRequest(this.$me.clear());
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('$get', function (query) {
-
-    return new idbRequest(this.$me.get(query));
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('$getKey', function (query) {
-
-    return new idbRequest(this.$me.getKey(query));
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('$getAll', function (query, count) {
-
-    return new idbRequest(this.$me.getAll(query, count));
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('$getAllKeys', function (query, count) {
-
-    return new idbRequest(this.$me.getAllKeys(query, count));
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('$count', function (query) {
-
-    return new idbRequest(this.$me.count(query));
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('$openCursor', function (query, direction) {
-
-    return new idbRequest(this.$me.openCursor(query, direction));
-
-  })
-
-  // ---------------------------------------------------------------------------
-  .method('$openKeyCursor', function (query, direction) {
-
-    return new idbRequest(this.$me.openKeyCursor(query, direction));
+    return new idbRequest(this.$me.clear())
+      .$promise
+      .then(function(event){});
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$index', function (name) {
 
-    throw 'idbStore.method.$index';
+    return new idbIndex(this.$me.index(name));
 
   })
 
   // ---------------------------------------------------------------------------
-  .method('$createIndex', function (name, keyPath, options) {
+  .method('$createIndex', function (fields, name, options) {
+    if (typeof fields == 'string') {
+      fields = [fields];
+    }
+    if (typeof name == 'object'){
+      options = name;
+      name = null;
+    }
+    if (!name) {
+      name = fields.sort().join('_');
+    }
 
-    throw 'idbStore.method.$createIndex';
+    return new idbIndex(this.$me.createIndex(name, fields, options));
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$deleteIndex', function (indexName) {
-
+    if (Array.angular.isArray(indexName)) {
+      indexName = indexName.sort().join('_');
+    }
     this.$me.deleteIndex(indexName);
 
   })
