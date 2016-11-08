@@ -97,14 +97,14 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel, idbOpenDBR
   // ---------------------------------------------------------------------------
   .static('$open', function (name, version) {
 
-    return new idbOpenDBRequest(indexedDB.open(name, version));
+    return new idbOpenDBRequest(indexedDB.open.apply(indexedDB, arguments));
 
   })
 
   // ---------------------------------------------------------------------------
   .static('$drop', function (name) {
     
-    return new idbOpenDBRequest(indexedDB.deleteDatabase(name));
+    return new idbOpenDBRequest(indexedDB.deleteDatabase.apply(indexedDB, arguments));
 
   })
 
@@ -173,6 +173,7 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel, idbOpenDBR
       });
 
     });
+    
   })
 
   // ---------------------------------------------------------------------------
@@ -242,7 +243,7 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel, idbOpenDBR
   .method('$close', function () {
 
     this.$opened = null;
-    this.$me.close();
+    this.$me.close.apply(this.$me, arguments);
 
     return this;
     
@@ -251,14 +252,14 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel, idbOpenDBR
   // ---------------------------------------------------------------------------
   .method('$createStore', function (name, options) {
 
-    return new idbStore(this.$me.createObjectStore(name, options));
+    return new idbStore(this.$me.createObjectStore.apply(this.$me, arguments));
     
   })
 
   // ---------------------------------------------------------------------------
   .method('$dropStore', function (name) {
 
-    this.$me.deleteObjectStore(name);
+    this.$me.deleteObjectStore.apply(this.$me, arguments);
 
     return this;
 
@@ -277,10 +278,11 @@ export default function (Clazzer, idbEventTarget, idbStore, idbModel, idbOpenDBR
 
   // ---------------------------------------------------------------------------
   .method('$transaction', function (storeNames, mode) { const thiz = this;
-    
+    const args = arguments;
+
     return thiz.$open()
       .then(function (thiz) {
-        return new idbTransaction(thiz.$me.transaction(storeNames, mode));
+        return new idbTransaction(thiz.$me.transaction.apply(thiz.$me, args));
       });
 
   })

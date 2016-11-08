@@ -76,7 +76,7 @@ return function idbModelFactory (db, name, socket) {
       type: 'number'
     }
   })
-  .static('$indexesToCreate', {})
+  .static('$indexesToCreate', [])
   .static('$instances', {})
     
   // ---------------------------------------------------------------------------
@@ -88,22 +88,8 @@ return function idbModelFactory (db, name, socket) {
     
   // ---------------------------------------------------------------------------
   .static('$addIndex', function (fields, name, options) {
-    if (typeof fields == 'string') {
-      fields = [fields];
-    }
-    if (typeof name == 'object') {
-      options = name;
-      name = null;
-    }
-    if (!name) {
-      name = fields.sort().join('_');
-    }
 
-    this.$indexesToCreate[name] = {
-      fields: fields,
-      name: name,
-      options: options,
-    };
+    this.$indexesToCreate.push(arguments);
 
     return this;
 
@@ -114,9 +100,8 @@ return function idbModelFactory (db, name, socket) {
 
     const store = thiz.$db.$createStore(thiz.$name, thiz.$id);
 
-    Object.keys(thiz.$indexesToCreate).map(function (key) {
-      const index = thiz.$indexesToCreate[key];
-      store.$createIndex(index.fields, index.name, index.options);
+    thiz.$indexesToCreate.map(function (args) {
+      store.$createIndex.apply(store, args);
     });
 
     if (cb) cb(thiz, store);
@@ -156,11 +141,12 @@ return function idbModelFactory (db, name, socket) {
 
   // ---------------------------------------------------------------------------
   .static('$put', function (obj, key) { const thiz = this;
-    
+    const args = arguments;
     const data = this.$getValues(obj);
+    args[0] = data;
 
     return thiz.$writer().then(function (store) {
-      return store.$put(data, key).then(function (key) {
+      return store.$put.apply(store, args).then(function (key) {
         const record = thiz.$getInstance(key);
         record.$setValues(data);
         record.$setLocalValues(data);
@@ -172,11 +158,12 @@ return function idbModelFactory (db, name, socket) {
 
   // ---------------------------------------------------------------------------
   .static('$add', function (obj, key) { const thiz = this;
-    
+    const args = arguments;
     const data = this.$getValues(obj);
+    args[0] = data;
 
     return thiz.$writer().then(function (store) {
-      return store.$add(data, key).then(function (key) {
+      return store.$add.apply(store, args).then(function (key) {
         const record = thiz.$getInstance(key);
         record.$setValues(data);
         record.$setLocalValues(data);
@@ -188,29 +175,31 @@ return function idbModelFactory (db, name, socket) {
 
   // ---------------------------------------------------------------------------
   .static('$delete', function (query) {
+    const args = arguments;
     
     return this.$writer().then(function (store) {
-      return store.$delete(query);
+      return store.$delete.apply(store, args);
     });
 
   })
 
   // ---------------------------------------------------------------------------
   .static('$clear', function () {
+    const args = arguments;
     
     return this.$writer().then(function (store) {
-      return store.$clear();
+      return store.$clear.apply(store, args);
     });
 
   })
 
   // ---------------------------------------------------------------------------
   .static('$get', function (key) { const thiz = this;
-
+    const args = arguments;
     const record = this.$getInstance(key);
 
     record.$promise = thiz.$reader().then(function (store) {
-      return store.$get(key).then(function (data) {
+      return store.$get.apply(store, args).then(function (data) {
         record.$setValues(data);
         record.$setLocalValues(data);
         return record;
@@ -223,20 +212,21 @@ return function idbModelFactory (db, name, socket) {
 
   // ---------------------------------------------------------------------------
   .static('$getKey', function (query) { const thiz = this;
+    const args = arguments;
 
     return thiz.$reader().then(function (store) {
-      return store.$getKey(query);
+      return store.$getKey.apply(store, args);
     });
     
   })
 
   // ---------------------------------------------------------------------------
   .static('$getAll', function (query, count) { const thiz = this;
-    
+    const args = arguments;
     const result = [];
 
     result.$promise = thiz.$reader().then(function (store) {
-      return store.$getAll(query, count).then(function (arr) {
+      return store.$getAll.apply(store, args).then(function (arr) {
         return arr.map(function (data) {
           const record = thiz.$getInstance(thiz.$getKeyFrom(data));
           record.$setValues(data);
@@ -253,27 +243,28 @@ return function idbModelFactory (db, name, socket) {
 
   // ---------------------------------------------------------------------------
   .static('$getAllKeys', function (query, count) {
-    
+    const args = arguments;
     const result = [];
 
     result.$promise = this.$reader().then(function (store) {
-      return store.$getAllKeys().then(function (arr) {
+      return store.$getAllKeys.apply(store, args).then(function (arr) {
         return arr.map(function (key) {
           result.push(key);
           return key;
         });
       });
     });
-
+    
     return result;
 
   })
 
   // ---------------------------------------------------------------------------
   .static('$count', function (query) {
-    
+    const args = arguments;
+
     return this.$reader().then(function (store) {
-      return store.$count(query);
+      return store.$count.apply(store, args);
     });
 
   })
@@ -379,7 +370,7 @@ return function idbModelFactory (db, name, socket) {
   // Configura el remote api
   .static('$remote', function (url, args, actions) {
 
-    this.$_remote = lbResource(url, args, actions);
+    this.$_remote = lbResource.apply(lbResource, arguments);
     return this;
 
   })

@@ -69,14 +69,14 @@ export default function (Clazzer, idbStore) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$store', function(name){
 
-    return new idbStore(this.$me.objectStore(name));
+    return new idbStore(this.$me.objectStore.apply(this.$me, arguments));
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$abort', function(){
 
-    this.$me.abort();
+    this.$me.abort.apply(this.$me, arguments);
 
   })
 

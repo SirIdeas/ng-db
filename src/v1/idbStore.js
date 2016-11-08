@@ -51,7 +51,7 @@ export default function (Clazzer, idbRequest, idbIndex, idbConsultant, $log) { '
   // ---------------------------------------------------------------------------
   .method('$put', function (value, key) {
 
-    return new idbRequest(this.$me.put(value, key))
+    return new idbRequest(this.$me.put.apply(this.$me, arguments))
       .$promise
       .then(function (event) {
         return event.target.result;
@@ -62,7 +62,7 @@ export default function (Clazzer, idbRequest, idbIndex, idbConsultant, $log) { '
   // ---------------------------------------------------------------------------
   .method('$add', function (value, key) {
 
-    return new idbRequest(this.$me.add(value, key))
+    return new idbRequest(this.$me.add.apply(this.$me, arguments))
       .$promise
       .then(function (event) {
         return event.target.result;
@@ -73,7 +73,7 @@ export default function (Clazzer, idbRequest, idbIndex, idbConsultant, $log) { '
   // ---------------------------------------------------------------------------
   .method('$delete', function (query) {
 
-    return new idbRequest(this.$me.delete(query))
+    return new idbRequest(this.$me.delete.apply(this.$me, arguments))
       .$promise
       .then(function (event) {});
 
@@ -82,7 +82,7 @@ export default function (Clazzer, idbRequest, idbIndex, idbConsultant, $log) { '
   // ---------------------------------------------------------------------------
   .method('$clear', function () {
 
-    return new idbRequest(this.$me.clear())
+    return new idbRequest(this.$me.clear.apply(this.$me, arguments))
       .$promise
       .then(function(event){});
 
@@ -91,7 +91,7 @@ export default function (Clazzer, idbRequest, idbIndex, idbConsultant, $log) { '
   // ---------------------------------------------------------------------------
   .method('$index', function (name) {
 
-    return new idbIndex(this.$me.index(name));
+    return new idbIndex(this.$me.index.apply(this.$me, arguments));
 
   })
 

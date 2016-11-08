@@ -29,12 +29,12 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   
   // ---------------------------------------------------------------------------
   // Getters
-  .getter('$name',        'name')
+  .getter('$name', 'name')
 
   // ---------------------------------------------------------------------------
   .method('$get', function (query) {
 
-    return new idbRequest(this.$me.get(query))
+    return new idbRequest(this.$me.get.apply(this.$me, arguments))
       .$promise
       .then(function (event) {
         return event.target.result;
@@ -45,7 +45,7 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$getKey', function (query) {
 
-    return new idbRequest(this.$me.getKey(query))
+    return new idbRequest(this.$me.getKey.apply(this.$me, arguments))
       .$promise
       .then(function (event) {
         return event.target.result;
@@ -56,7 +56,7 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$getAll', function (query, count) {
 
-    return new idbRequest(this.$me.getAll(query, count))
+    return new idbRequest(this.$me.getAll.apply(this.$me, arguments))
       .$promise
       .then(function (event) {
         return event.target.result;
@@ -66,7 +66,7 @@ export default function (Clazzer, idbRequest) { 'ngInject';
 
   // ---------------------------------------------------------------------------
   .method('$getAllKeys', function (query, count) {
-    return new idbRequest(this.$me.getAllKeys(query, count))
+    return new idbRequest(this.$me.getAllKeys.apply(this.$me, arguments))
       .$promise
       .then(function (event) {
         return event.target.result;
@@ -77,7 +77,7 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$count', function (query) {
 
-    return new idbRequest(this.$me.count(query))
+    return new idbRequest(this.$me.count.apply(this.$me, arguments))
       .$promise
       .then(function (event) {
         return event.target.result;
@@ -88,14 +88,14 @@ export default function (Clazzer, idbRequest) { 'ngInject';
   // ---------------------------------------------------------------------------
   .method('$openCursor', function (query, direction) {
 
-    return new idbRequest(this.$me.openCursor(query, direction));
+    return new idbRequest(this.$me.openCursor.apply(this.$me, arguments));
 
   })
 
   // ---------------------------------------------------------------------------
   .method('$openKeyCursor', function (query, direction) {
 
-    return new idbRequest(this.$me.openKeyCursor(query, direction));
+    return new idbRequest(this.$me.openKeyCursor.apply(this.$me, arguments));
 
   })
 
