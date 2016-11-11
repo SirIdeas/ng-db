@@ -1,87 +1,112 @@
 'use strict';
 
-export default function idbSocketService($log, io, idbUtils) { 'ngInject'; const thiz = this;
-  
-  let $defUrlServer = null;
+export default function (Clazzer, io, $log) { 'ngInject';
 
-  function idbSocket ($urlServer, $accessTokenId, $currentUserId) { const thiz = this;
-    idbUtils.validate(arguments, ['string', ['string', 'number'], ['string', 'number']]);
+  // ---------------------------------------------------------------------------
+  // Atributos falntantes por definir
+  // $socket
 
-    const $listeners =  [];
-    let $socket = null;
-    $urlServer = $urlServer || $defUrlServer;
+  return new
+  // ---------------------------------------------------------------------------
+  // Constructor
+  Clazzer(function idbSocket(url, accessTokenId, currentUserId){
 
-    // Conectarse al servidor
-    thiz.connect = function () {
+    new Clazzer(this)
+      .static('$url', url || idbSocket.$defUrlServer)
+      .static('$accessTokenId', accessTokenId || idbSocket.$defAccessTokenId)
+      .static('$currentUserId', currentUserId || idbSocket.$defCurrentUserId);
+
+    this.$connect();
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .property('$_listeners', { value:[] })
+
+  // ---------------------------------------------------------------------------
+  // Conectarse al servidor
+  .method('$connect', function () {
+
+    // Creating connection with server
+    const socket = this.$socket = io.connect(this.$url);
+
+    // This part is only for login users for authenticated $socket connection between client and server.
+    // If you are not using login page in you website then you should remove rest piece of code..
+    socket.on('connect', function(){
+      $log.log('connected');
+
+      socket.emit('authentication', {
+        id: this.$accessTokenId,
+        userId: this.$currentUserId,
+      });
       
-      // Creating connection with server
-      $socket = io.connect($urlServer);
-
-      // This part is only for login users for authenticated $socket connection between client and server.
-      // If you are not using login page in you website then you should remove rest piece of code..
-
-      $socket.on('connect', function(){
-        $log.log('connected');
-
-        $socket.emit('authentication', {
-          id: $accessTokenId,
-          userId: $currentUserId,
-        });
-        $socket.on('authenticated', function() {
-          // use the $socket as usual
-          $log.log('User is authenticated');
-        });
-
+      socket.on('authenticated', function() {
+        // use the $socket as usual
+        $log.log('User is authenticated');
       });
 
-    };
+    });
 
-    thiz.subscribe = function (options, cb) {
-      idbUtils.validate(arguments, ['object', ['function', 'undefined']]);
+  })
 
-      var name = options.modelName + '.' + options.eventName;
+  // ---------------------------------------------------------------------------
+  .method('$subscribe', function (options, cb) {
 
-      if (typeof options.modelId === 'number') {
-        name = name + '.' + options.modelId;
-      }
+    let name = options.modelName + '.' + options.eventName;
 
-      $socket.on(name, cb);
-      
-      //Push the container..
-      $listeners.push(name, cb);
+    if (typeof options.modelId === 'number') {
+      name = name + '.' + options.modelId;
+    }
 
-    };
+    this.$socket.on(name, cb);
+    
+    //Push the container..
+    this.$pushListener(name, cb);
 
-    thiz.pushListener = function (subscriptionName, cb) {
-      idbUtils.validate(arguments, ['string', ['function', 'undefined']]);
+  })
 
-      $listeners.push(subscriptionName);
+  // ---------------------------------------------------------------------------
+  .method('$pushListener', function (name, cb) {
 
-    };
+    this.$_listeners.push(name);
 
-    thiz.unsubscribe = function (subscriptionName) {
-      $socket.removeAllListeners(subscriptionName);  
-      var idx = $listeners.indexOf(subscriptionName);
-      if (idx != -1){
-        $listeners.splice(idx, 1);
-      }
-    };
+  })
 
-    thiz.connect();
+  // ---------------------------------------------------------------------------
+  .method('$unsubscribe',function (subscriptionName) {
 
-  };
+    this.$socket.removeAllListeners(subscriptionName);  
+    var idx = this.$_listeners.indexOf(subscriptionName);
+    if (idx != -1){
+      this.$_listeners.splice(idx, 1);
+    }
 
+  })
+
+  // ---------------------------------------------------------------------------
   // Asigna la URL de servidor por defecto
-  idbSocket.setUrlServer = function (urlServer) {
-    $defUrlServer = urlServer;
-  };
+  .static('$setUrlServer', function (url) {
 
+    this.$defUrlServer = url;
+    return this;
+
+  })
+
+  // ---------------------------------------------------------------------------
   // ASigna las credenciales por defecto
-  idbSocket.setCredentials = function (accessTokenId, currentUserId) {
-    accessTokenId = $accessTokenId
-    currentUserId = $currentUserId;
-  };
+  .static('$setCredentials', function (accessTokenId, currentUserId) {
 
-  return idbSocket;
+    this.$defAccessTokenId = accessTokenId;
+    this.$defCurrentUserId = currentUserId;
+    return this;
+
+  })
+
+  // ---------------------------------------------------------------------------
+  .clazz
+
+  // ---------------------------------------------------------------------------
+  .$setUrlServer(null)
+  .$setCredentials(null, null);
 
 }
