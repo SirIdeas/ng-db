@@ -4,37 +4,37 @@
 export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents, lbResource, $timeout) { 'ngInject';
 
   // Buscar un campo
-    const searchDeepField = function (obj, field, cb) {
-      idbUtils.validate(arguments, ['object', 'string', 'function']);
+  const searchDeepField = function (obj, field, cb) {
+    idbUtils.validate(arguments, ['object', 'string', 'function']);
 
-      const fields = field.split('.');
-      const lastField = fields.pop();
+    const fields = field.split('.');
+    const lastField = fields.pop();
 
-      return (function _set(obj) {
-        if (fields.length == 0)
-          return cb(obj, lastField);
-        const field = fields.shift();
-        if (typeof obj[field] === 'undefined')
-          obj[field] = {};
-        return _set(obj[field]);
-      })(obj);
+    return (function _set(obj) {
+      if (fields.length == 0)
+        return cb(obj, lastField);
+      const field = fields.shift();
+      if (typeof obj[field] === 'undefined')
+        obj[field] = {};
+      return _set(obj[field]);
+    })(obj);
 
-    };
+  };
 
-    // Obtiene el valor pa una propieda de un objeto
-    const getFieldValue = function (obj, field) {
-      return searchDeepField(obj, field, function (obj, lastField) {
-        return obj[lastField];
-      });
-    };
+  // Obtiene el valor pa una propieda de un objeto
+  const getFieldValue = function (obj, field) {
+    return searchDeepField(obj, field, function (obj, lastField) {
+      return obj[lastField];
+    });
+  };
 
-    // Obtiene el valor pa una propieda de un objeto
-    const setFieldValue = function (obj, field, value) {
-      searchDeepField(obj, field, function (obj, lastField) {
-        obj[lastField] = value;
-      });
-      return obj;
-    };
+  // Obtiene el valor pa una propieda de un objeto
+  const setFieldValue = function (obj, field, value) {
+    searchDeepField(obj, field, function (obj, lastField) {
+      obj[lastField] = value;
+    });
+    return obj;
+  };
 
   return function idbModel ($db, $modelName, $socket) {
     idbUtils.validate(arguments, [null ,'string']);
@@ -99,157 +99,157 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     };
 
     // Devuelv el nombre del modelo
-      Model.getModelName = function () {
+    Model.getModelName = function () {
 
-        return $modelName;
+      return $modelName;
 
+    };
+
+    // Asigna el ID al modelo
+    Model.autoIncrement = function (autoIncrement) {
+      idbUtils.validate(arguments, ['boolean']);
+
+      $id.autoIncrement = autoIncrement;
+      return Model;
+
+    };
+
+    // Asigna el ID al modelo
+    Model.keyPath = function (keyPath) {
+      idbUtils.validate(arguments, ['string']);
+
+      $id.keyPath = keyPath;
+      return Model;
+
+    };
+
+    // Crea el objecto storage para el modelo.
+    Model.createStore = function () {
+
+      $db.createStore($modelName, $id);
+      return Model;
+
+    };
+
+    // Agrega un index
+    Model.index = function (indexName, fieldName, opts) {
+
+      $db.createIndex($modelName, indexName, fieldName, opts);
+      return Model;
+
+    };
+
+    // Método que permite modificar model.
+    Model.build = function (buildCallback) {
+      idbUtils.validate(arguments, ['function']);
+
+      buildCallback(Model);
+      return Model;
+
+    };
+
+    // Asigna la especificación de los campos
+    Model.fields = function (fields) {
+      idbUtils.validate(arguments, ['object']);
+
+      $fields = {};
+      $fields[$id.keyPath] = {
+        "type": "number",
+        "required": true
       };
 
-      // Asigna el ID al modelo
-      Model.autoIncrement = function (autoIncrement) {
-        idbUtils.validate(arguments, ['boolean']);
-
-        $id.autoIncrement = autoIncrement;
-        return Model;
-
-      };
-
-      // Asigna el ID al modelo
-      Model.keyPath = function (keyPath) {
-        idbUtils.validate(arguments, ['string']);
-
-        $id.keyPath = keyPath;
-        return Model;
-
-      };
-
-      // Crea el objecto storage para el modelo.
-      Model.createStore = function () {
-
-        $db.createStore($modelName, $id);
-        return Model;
-
-      };
-
-      // Agrega un index
-      Model.index = function (indexName, fieldName, opts) {
-
-        $db.createIndex($modelName, indexName, fieldName, opts);
-        return Model;
-
-      };
-
-      // Método que permite modificar model.
-      Model.build = function (buildCallback) {
-        idbUtils.validate(arguments, ['function']);
-
-        buildCallback(Model);
-        return Model;
-
-      };
-
-      // Asigna la especificación de los campos
-      Model.fields = function (fields) {
-        idbUtils.validate(arguments, ['object']);
-
-        $fields = {};
-        $fields[$id.keyPath] = {
-          "type": "number",
-          "required": true
-        };
-
-        Object.keys(fields).map(function (fieldName) {
-          let field = fields[fieldName];
-          if (typeof fields[fieldName] == 'string'){
-            field = { "type": field };
-          }
-          $fields[fieldName] = field;
-        });
-        
-        return Model;
-
-      };
-
-      // Configura el remote api;
-      Model.remote = function (url, args, actions) {
-        idbUtils.validate(arguments, ['string', 'object', 'object']);
-
-        $remote = lbResource(url, args, actions);
-        return Model;
-
-      };
-
-      // Devuelve la instancia del $remote del modelo
-      Model.getRemote = function () {
-
-        return $remote;
-
-      };
-
-      // Devuelve el valor correspondiente al key de un objeto
-      Model.getKeyFrom = function (data) {
-        return getFieldValue(data, $id.keyPath);
-      };
-
-      // Devuelve la instancia del model de las guardadas. Si no existe entonce
-      // se crea
-      Model.getInstance = function (key) {
-        idbUtils.validate(arguments, [['string', 'number', 'undefined']]);
-
-        // El objeto no tiene ID
-        if (!key) {
-          return new Model();
+      Object.keys(fields).map(function (fieldName) {
+        let field = fields[fieldName];
+        if (typeof fields[fieldName] == 'string'){
+          field = { "type": field };
         }
+        $fields[fieldName] = field;
+      });
+      
+      return Model;
 
-        // No existe la instancia entonce se crea
-        if (!$instances[key]){
-          $instances[key] = new Model();
-        }
-        
-        return $instances[key];
+    };
 
-      };
+    // Configura el remote api;
+    Model.remote = function (url, args, actions) {
+      idbUtils.validate(arguments, ['string', 'object', 'object']);
 
-      // Busca un registro en la objectStore del modelo.
-      Model.get = function (key) {
+      $remote = lbResource(url, args, actions);
+      return Model;
 
-        const instance = Model.getInstance(key);
+    };
 
-        if (instance.$localLoaded) return instance;
-        
-        const defered = qs.defer();
-        
-        instance.$resolved = false;
-        instance.$promise = defered.promise;
+    // Devuelve la instancia del $remote del modelo
+    Model.getRemote = function () {
 
-        $db.get($modelName, key).promise.then(function (data) {
-          instance.$resolved = true;
+      return $remote;
 
-          Model.getVersionOf(key).promise
-            .then(function (version) {
-              instance.$setLocalValues(data, data && version? version.hash : undefined);
-              defered.resolve(instance);
-            })
-            .catch(function (err) {
-              defered.resolve(instance);
-              $log.error(['Model.getVersionOf any error', err])
-            });
+    };
 
-        })
-        .catch(function (err) {
-          defered.reject(err);
-        });
-        
-        return instance;
+    // Devuelve el valor correspondiente al key de un objeto
+    Model.getKeyFrom = function (data) {
+      return getFieldValue(data, $id.keyPath);
+    };
 
-      };
+    // Devuelve la instancia del model de las guardadas. Si no existe entonce
+    // se crea
+    Model.getInstance = function (key) {
+      idbUtils.validate(arguments, [['string', 'number', 'undefined']]);
 
-      // Buscar en el modelo
-      Model.find = function (filters) {
+      // El objeto no tiene ID
+      if (!key) {
+        return new Model();
+      }
 
-        return new idbQuery($db, Model, filters);
+      // No existe la instancia entonce se crea
+      if (!$instances[key]){
+        $instances[key] = new Model();
+      }
+      
+      return $instances[key];
 
-      };
+    };
+
+    // Busca un registro en la objectStore del modelo.
+    Model.get = function (key) {
+
+      const instance = Model.getInstance(key);
+
+      if (instance.$localLoaded) return instance;
+      
+      const defered = qs.defer();
+      
+      instance.$resolved = false;
+      instance.$promise = defered.promise;
+
+      $db.get($modelName, key).promise.then(function (data) {
+        instance.$resolved = true;
+
+        Model.getVersionOf(key).promise
+          .then(function (version) {
+            instance.$setLocalValues(data, data && version? version.hash : undefined);
+            defered.resolve(instance);
+          })
+          .catch(function (err) {
+            defered.resolve(instance);
+            $log.error(['Model.getVersionOf any error', err])
+          });
+
+      })
+      .catch(function (err) {
+        defered.reject(err);
+      });
+      
+      return instance;
+
+    };
+
+    // Buscar en el modelo
+    Model.find = function (filters) {
+
+      return new idbQuery($db, Model, filters);
+
+    };
 
     // Crea nuevas instancias de los modelos
     Model.create = function (data) {
@@ -295,35 +295,35 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     };
 
     // Crea un modelo para guardar las versiones del modelo actual
-      Model.versioning = function (modelName, cb) {
-        if (typeof modelName === 'function') {
-          cb = modelName;
-          modelName = undefined;
-        }
-        idbUtils.validate([modelName, cb], [['string', 'undefined'], ['function', 'undefined']]);
+    Model.versioning = function (modelName, cb) {
+      if (typeof modelName === 'function') {
+        cb = modelName;
+        modelName = undefined;
+      }
+      idbUtils.validate([modelName, cb], [['string', 'undefined'], ['function', 'undefined']]);
 
-        if (!$versioning) {
+      if (!$versioning) {
 
-          // Si el model no tiene nombre se agrega
-          if (!modelName){
-            modelName = $modelName+'_versioning';
-          }
-
-          // Crear modelo para el manejo de datos
-          $versioning = $db.model(modelName)
-            .autoIncrement(false)
-            .keyPath($id.keyPath)
-            .fields({
-              "hash": { "type": "string", "required": true },
-            });
-
+        // Si el model no tiene nombre se agrega
+        if (!modelName){
+          modelName = $modelName+'_versioning';
         }
 
-        if (cb) cb($versioning);
+        // Crear modelo para el manejo de datos
+        $versioning = $db.model(modelName)
+          .autoIncrement(false)
+          .keyPath($id.keyPath)
+          .fields({
+            "hash": { "type": "string", "required": true },
+          });
 
-        return Model;
+      }
 
-      };
+      if (cb) cb($versioning);
+
+      return Model;
+
+    };
 
     // Devuelve la instancia de la version local del registro
     Model.getVersionOf = function (key) { 
@@ -347,134 +347,134 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     };
 
     // Agrega un mandejador de eventos al modelo
-      Model.bind = function (eventName, handler) {
-        idbUtils.validate(arguments, ['string', ['function', 'undefined']]);
+    Model.bind = function (eventName, handler) {
+      idbUtils.validate(arguments, ['string', ['function', 'undefined']]);
 
-        if (!$eventsHandlers[eventName]) {
-          $eventsHandlers[eventName] = [];
-        }
+      if (!$eventsHandlers[eventName]) {
+        $eventsHandlers[eventName] = [];
+      }
 
-        $eventsHandlers[eventName].push(handler);
+      $eventsHandlers[eventName].push(handler);
 
-        return Model;
+      return Model;
 
-      };
+    };
 
-      // Dispara un evento del model
-      Model.emit = function (eventName, args) {
-        idbUtils.validate(arguments, ['string', ['undefined', 'array']]);
+    // Dispara un evento del model
+    Model.emit = function (eventName, args) {
+      idbUtils.validate(arguments, ['string', ['undefined', 'array']]);
 
-        if ($eventsHandlers[eventName]) {
-          $eventsHandlers[eventName].map(function (cb) {
-            cb.apply(Model, args || []);
-          });
-        }
-
-        return Model;
-
-      };
-
-      // Devuelve el valor de una propiedad
-      Model.prototype.$get = function (field) {
-
-        return getFieldValue(this, field);
-
-      };
-
-      // Asigna in valor a un campo
-      Model.prototype.$set = function (field, value) {
-
-        return getFieldValue(this, field, value);
-
-      };
-
-      // Devuelve un objeto con las propiedades del registro
-      Model.prototype.$getValues = function (data) {
-        idbUtils.validate(arguments, [['object', 'undefined']]);
-
-        const values = {};
-        data = data || this;
-
-        Object.keys($fields).map(function (field) {
-          setFieldValue(values, field, getFieldValue(data, field));
+      if ($eventsHandlers[eventName]) {
+        $eventsHandlers[eventName].map(function (cb) {
+          cb.apply(Model, args || []);
         });
+      }
 
-        return values;
+      return Model;
 
-      };
+    };
 
-      // Devuelve un objeto con las propiedades locales del registro
-      Model.prototype.$getLocalValues = function () {
+    // Devuelve el valor de una propiedad
+    Model.prototype.$get = function (field) {
 
-        return this.$getValues(this.$localValues);
+      return getFieldValue(this, field);
 
-      };
+    };
 
-      // Devuelve un modelo con las propiedades remotas del registro
-      Model.prototype.$getRemoteValues = function () {
+    // Asigna in valor a un campo
+    Model.prototype.$set = function (field, value) {
 
-        return this.$getValues(this.$remoteValues);
+      return getFieldValue(this, field, value);
 
-      };
+    };
 
-      // Asigna las propiedades del registro
-      Model.prototype.$setValues = function (data, version) { const thiz = this;
-        idbUtils.validate(arguments, ['object', ['string', 'undefined']]);
-        
-        thiz.$version = version;
+    // Devuelve un objeto con las propiedades del registro
+    Model.prototype.$getValues = function (data) {
+      idbUtils.validate(arguments, [['object', 'undefined']]);
 
-        Object.keys(data).map(function (field) {
-          setFieldValue(thiz, field, data[field]);
-        });
+      const values = {};
+      data = data || this;
 
-        thiz.$loaded = true;
+      Object.keys($fields).map(function (field) {
+        setFieldValue(values, field, getFieldValue(data, field));
+      });
 
-        return thiz;
+      return values;
 
-      };
+    };
 
-      // Asigna las propiedades locales del registro
-      Model.prototype.$setLocalValues = function (data, version) { const thiz = this;
-        idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
-        
-        thiz.$localVersion = version;
+    // Devuelve un objeto con las propiedades locales del registro
+    Model.prototype.$getLocalValues = function () {
 
-        Object.keys(data || {}).map(function (field) {
-          setFieldValue(thiz.$localValues, field, data[field]);
-        });
+      return this.$getValues(this.$localValues);
 
-        if (data) {
-          thiz.$localLoaded = true;
-          if (!thiz.$loaded) {
-            thiz.$setValues(data, version);
-          }
+    };
+
+    // Devuelve un modelo con las propiedades remotas del registro
+    Model.prototype.$getRemoteValues = function () {
+
+      return this.$getValues(this.$remoteValues);
+
+    };
+
+    // Asigna las propiedades del registro
+    Model.prototype.$setValues = function (data, version) { const thiz = this;
+      idbUtils.validate(arguments, ['object', ['string', 'undefined']]);
+      
+      thiz.$version = version;
+
+      Object.keys(data).map(function (field) {
+        setFieldValue(thiz, field, data[field]);
+      });
+
+      thiz.$loaded = true;
+
+      return thiz;
+
+    };
+
+    // Asigna las propiedades locales del registro
+    Model.prototype.$setLocalValues = function (data, version) { const thiz = this;
+      idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
+      
+      thiz.$localVersion = version;
+
+      Object.keys(data || {}).map(function (field) {
+        setFieldValue(thiz.$localValues, field, data[field]);
+      });
+
+      if (data) {
+        thiz.$localLoaded = true;
+        if (!thiz.$loaded) {
+          thiz.$setValues(data, version);
         }
+      }
 
 
-        return thiz;
+      return thiz;
 
-      };
+    };
 
-      // Asigna las propiedades remotas del registro
-      Model.prototype.$setRemoteValues = function (data, version) { const thiz = this;
-        idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
-        
-        thiz.$remoteVersion = version;
+    // Asigna las propiedades remotas del registro
+    Model.prototype.$setRemoteValues = function (data, version) { const thiz = this;
+      idbUtils.validate(arguments, [['object', 'undefined'], ['string', 'undefined']]);
+      
+      thiz.$remoteVersion = version;
 
-        Object.keys(data || {}).map(function (field) {
-          setFieldValue(thiz.$remoteValues, field, data[field]);
-        });
+      Object.keys(data || {}).map(function (field) {
+        setFieldValue(thiz.$remoteValues, field, data[field]);
+      });
 
-        if (data) {
-          thiz.$remoteLoaded = true;
-          if (!thiz.$loaded) {
-            thiz.$setValues(data, version);
-          }
+      if (data) {
+        thiz.$remoteLoaded = true;
+        if (!thiz.$loaded) {
+          thiz.$setValues(data, version);
         }
+      }
 
-        return thiz;
+      return thiz;
 
-      };
+    };
 
     // Asigna el ID del objeto
     Model.prototype.$setKey = function (newKey) {
@@ -511,8 +511,8 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     }
 
     // Consturctor que se puede sobre escribir
-      Model.prototype.$constructor = function (data) {
-      };
+    Model.prototype.$constructor = function (data) {
+    };
 
     // Guarda los datos del objeto
     Model.prototype.$pull = function (newValues, version){ const thiz = this;
@@ -538,59 +538,59 @@ export default function idbModelService ($log, qs, idbUtils, idbQuery, idbEvents
     };
 
     // Funcion que hace escuchars los mensajes del socket para el model
-      Model.prototype.$listen = function () { const thiz = this;
-        if (!$socket) throw new Error('Model.DoesNotHaveSocketInstance');
+    Model.prototype.$listen = function () { const thiz = this;
+      if (!$socket) throw new Error('Model.DoesNotHaveSocketInstance');
 
-        // Crear una subscripcion al socket para cuando se reciban datos
-        // para la instancia actual
-        $socket.subscribe({
-          modelName: $modelName,
-          eventName: 'update',
-          modelId: thiz.$get($id.keyPath),
-        }, function (data) {
+      // Crear una subscripcion al socket para cuando se reciban datos
+      // para la instancia actual
+      $socket.subscribe({
+        modelName: $modelName,
+        eventName: 'update',
+        modelId: thiz.$get($id.keyPath),
+      }, function (data) {
 
-          // A recibir datos del socket asignar los valores
-          $timeout(function () {
-            // Emitir evento de datos recibidor para el modelo
-            thiz.$setRemoteValues(data.values, data.version);
-          });
-
+        // A recibir datos del socket asignar los valores
+        $timeout(function () {
+          // Emitir evento de datos recibidor para el modelo
+          thiz.$setRemoteValues(data.values, data.version);
         });
 
-      };
+      });
 
-      // Agrega un mandejador de eventos
-      Model.prototype.$bind = function (eventName, handler) {
-        idbUtils.validate(arguments, ['string', ['function', 'undefined']]);
+    };
 
-        if (!this.$eventsHandlers[eventName]) {
-          this.$eventsHandlers[eventName] = [];
-        }
+    // Agrega un mandejador de eventos
+    Model.prototype.$bind = function (eventName, handler) {
+      idbUtils.validate(arguments, ['string', ['function', 'undefined']]);
 
-        this.$eventsHandlers[eventName].push(handler);
+      if (!this.$eventsHandlers[eventName]) {
+        this.$eventsHandlers[eventName] = [];
+      }
 
-        return this;
+      this.$eventsHandlers[eventName].push(handler);
 
-      };
+      return this;
 
-      // Dispara un evento
-      Model.prototype.$emit = function (eventName, args) { const thiz = this;
-        idbUtils.validate(arguments, ['string', ['undefined', 'array']]);
+    };
 
-        // Llamar el evento para el modelo
-        Model.emit(eventName, [thiz, [].concat([thiz]).concat(args)]);
+    // Dispara un evento
+    Model.prototype.$emit = function (eventName, args) { const thiz = this;
+      idbUtils.validate(arguments, ['string', ['undefined', 'array']]);
 
-        if (thiz.$eventsHandlers[eventName]) {
-          thiz.$eventsHandlers[eventName].map(function (cb) {
-            cb.apply(thiz, args || []);
-          });
-        }
+      // Llamar el evento para el modelo
+      Model.emit(eventName, [thiz, [].concat([thiz]).concat(args)]);
 
-        return thiz;
+      if (thiz.$eventsHandlers[eventName]) {
+        thiz.$eventsHandlers[eventName].map(function (cb) {
+          cb.apply(thiz, args || []);
+        });
+      }
 
-      };
+      return thiz;
 
-      Model.$instances = $instances;
+    };
+
+    Model.$instances = $instances;
 
     return Model;
 
