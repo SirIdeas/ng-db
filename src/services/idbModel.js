@@ -141,6 +141,64 @@ return function idbModelFactory (db, name, socket) {
   })
 
   // ---------------------------------------------------------------------------
+  // Control de versiones del modelo
+  .static('$versioning', function (modelName, cb) {
+    if (!this.$_versioning) {
+        
+      if (typeof modelName === 'function') {
+        cb = modelName;
+        modelName = undefined;
+      }
+
+      // Si el model no tiene nombre se agrega
+      if (!modelName){
+        modelName = this.$name+'_versioning';
+      }
+
+      // Crear modelo para el manejo de datos
+      this.$_versioning = this.$db.$model(modelName)
+        .$key(this.$id.keyPath, true)
+        .$field('hash', {
+          'type': 'string',
+          'required': true
+        });
+
+    }
+
+    if (cb) cb(this.$_versioning);
+    
+    return this;
+
+  })
+
+  // ---------------------------------------------------------------------------
+  // Configura el remote api
+  .static('$remote', function (url, args, actions) {
+
+    this.$_remote = lbResource.apply(lbResource, arguments);
+    return this;
+
+  })
+  
+  // ---------------------------------------------------------------------------
+  .static('$getInstance', function (key) {
+
+    // El objeto no tiene ID
+    if (key === undefined || key === null) {
+      return new this();
+    }
+
+    // No existe la instancia entonce se crea
+    if (!this.$instances[key]){
+      this.$instances[key] = new this();
+      this.$instances[key].$set(this.$id.keyPath, key);
+    }
+    
+    return this.$instances[key];
+
+  })
+
+  // ---------------------------------------------------------------------------
   .static('$put', function (obj, key) { const thiz = this;
     const args = arguments;
     const data = this.$getValues(obj);
@@ -276,24 +334,6 @@ return function idbModelFactory (db, name, socket) {
     return new idbQuery(this, filters);
 
   })
-  
-  // ---------------------------------------------------------------------------
-  .static('$getInstance', function (key) {
-
-    // El objeto no tiene ID
-    if (key === undefined || key === null) {
-      return new this();
-    }
-
-    // No existe la instancia entonce se crea
-    if (!this.$instances[key]){
-      this.$instances[key] = new this();
-      this.$instances[key].$set(this.$id.keyPath, key);
-    }
-    
-    return this.$instances[key];
-
-  })
 
   // ---------------------------------------------------------------------------
   // Asigna la especificación de los campos
@@ -363,46 +403,6 @@ return function idbModelFactory (db, name, socket) {
   .static('$build', function (buildCallback) {
 
     buildCallback(this);
-    return this;
-
-  })
-
-  // ---------------------------------------------------------------------------
-  // Control de versiones del modelo
-  .static('$versioning', function (modelName, cb) {
-    if (!this.$_versioning) {
-        
-      if (typeof modelName === 'function') {
-        cb = modelName;
-        modelName = undefined;
-      }
-
-      // Si el model no tiene nombre se agrega
-      if (!modelName){
-        modelName = this.$name+'_versioning';
-      }
-
-      // Crear modelo para el manejo de datos
-      this.$_versioning = this.$db.$model(modelName)
-        .$key(this.$id.keyPath, true)
-        .$field('hash', {
-          'type': 'string',
-          'required': true
-        });
-
-    }
-
-    if (cb) cb(this.$_versioning);
-    
-    return this;
-
-  })
-
-  // ---------------------------------------------------------------------------
-  // Configura el remote api
-  .static('$remote', function (url, args, actions) {
-
-    this.$_remote = lbResource.apply(lbResource, arguments);
     return this;
 
   })
